@@ -25,10 +25,11 @@ class Yar extends RpcStrategy
      * @author xyq
      * @param string $url 请求地址
      * @param array $userInfo 用户登录数据
+     * @param bool $isIndependent 独立站点标识
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, array $userInfo = null)
+    public function setParams(string $url, bool $isIndependent = false, array $userInfo = null)
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->client = new \Yar_Client($this->getRealUrl($url));
@@ -63,7 +64,8 @@ class Yar extends RpcStrategy
         ];
         $urls = array_values($urls);
         foreach ($urls as $key => $url) {
-            \Yar_Concurrent_Client::call($this->getRealUrl($url['url']), $url['method'], isset($url['params']) ? ['params' => $url['params']] : null, null, null, $header);
+            $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
+            \Yar_Concurrent_Client::call($this->getRealUrl($url['url'], $isIndependent), $url['method'], isset($url['params']) ? ['params' => $url['params']] : null, null, null, $header);
         }
         $this->urls = $urls;
         return $this;

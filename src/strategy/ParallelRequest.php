@@ -26,8 +26,12 @@ class ParallelRequest extends RequestFactory
             throw new Exception('请调用串行类');
         }
         foreach ($this->urlArray as $key => &$url) {
-            if (!isset($url['url']) || empty($url['url']) || strpos($url['url'], '_') !== 0) {
-                throw new Exception('请设置第' . ($key + 1) . '个的URL参数或者参数不正确');
+            if (!isset($url['url']) || empty($url['url'])) {
+                if (!isset($url['outer']) || false == $url['outer']) {
+                    if (strpos($url['url'], '_') !== 0) {
+                        throw new Exception('请设置第' . ($key + 1) . '个的URL参数或者参数不正确');
+                    }
+                }
             }
             if (!isset($url['method']) || empty($url['method'])) {
                 throw new Exception('请设置第' . ($key + 1) . '个的方法名称或者请求方式');

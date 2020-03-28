@@ -49,11 +49,12 @@ abstract class RpcStrategy
      * 设置串行请求参数
      *
      * @author xyq
-     * @param string $url
+     * @param string $url 请求URL
+     * @param bool $isIndependent 独立站点标识
      * @param array|null $userInfo
      * @return mixed
      */
-    abstract public function setParams(string $url, array $userInfo = null);
+    abstract public function setParams(string $url, bool $isIndependent = false, array $userInfo = null);
 
     /**
      * 获取串行请求结果
@@ -130,24 +131,42 @@ abstract class RpcStrategy
      *
      * @author xyq
      * @param string $url 请求地址
+     * @param bool $isIndependent 独立站点标识
      * @return string
      * @throws \Exception
      */
-    protected function getRealUrl(string $url) : string
+    protected function getRealUrl(string $url, $isIndependent = false) : string
     {
-        $url = explode('/', $url);
-        $domain = $this->params['domain'];
-        $first = trim(array_shift($url), '_');
-        $domainName = array_keys($domain);
-        if (!in_array($first, $domainName)) {
-            throw new \Exception('域名不存在于配置列表中');
-        }
-        $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
-        if ('local' != $this->params['server']) {
-            $realUrl .= $domain[$first] . implode('/', $url);
+        //请求的外部站点
+        if ($isIndependent) {
+            return $url;
         } else {
-            $realUrl .= $first . $this->params['rootDomain'] . implode('/', $url);
+            $url = explode('/', $url);
+            $first = trim(array_shift($url), '_');
+            //服务类型为模块
+            if (isset($this->params['serverType']) && 'module' == $this->params['serverType']) {
+                $module = $this->params['module'];
+                if (!in_array($first, $module)) {
+                    throw new \Exception('模块不存在于配置列表中');
+                }
+                $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
+                $realUrl .= $this->params['rootDomain'] . $first . '/' . implode('/', $url);
+            } else {
+                //独立子服务类型
+                $domain = $this->params['domain'];
+                $domainName = array_keys($domain);
+                if (!in_array($first, $domainName)) {
+                    throw new \Exception('域名不存在于配置列表中');
+                }
+                $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
+                if ('local' != $this->params['server']) {
+                    $realUrl .= $domain[$first] . implode('/', $url);
+                } else {
+                    $realUrl .= $first . $this->params['rootDomain'] . implode('/', $url);
+                }
+            }
+//            echo $realUrl."\n";
+            return $realUrl;
         }
-        return $realUrl;
     }
 }

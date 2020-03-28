@@ -42,10 +42,11 @@ class Http extends RpcStrategy
      * @author xyq
      * @param string $url 请求地址
      * @param array $userInfo 用户登录数据
+     * @param bool $isIndependent 独立站点标识
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, array $userInfo = null)
+    public function setParams(string $url, bool $isIndependent = false, array $userInfo = null)
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
@@ -75,7 +76,8 @@ class Http extends RpcStrategy
         $this->headers = $this->getHeaders($userInfo);
         $promises = [];
         foreach ($urls as $url) {
-            $promises[$url['key']] = $this->client->requestAsync(strtoupper($url['method']), $this->getRealUrl($url['url']), [
+            $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
+            $promises[$url['key']] = $this->client->requestAsync(strtoupper($url['method']), $this->getRealUrl($url['url'], $isIndependent), [
                 'headers' => $this->headers,
                 'json'    => $url['params'],
             ]);
@@ -124,7 +126,8 @@ class Http extends RpcStrategy
      */
     protected function formatResponse(string $msg, int $code = 200, $key = '')
     {
-//        var_dump($msg, $code, $key);die;
+//        var_dump($msg, $code, $key);
+//        die;
         $exceptionMsg = empty($key) ? '' : "键值{$key}：";
         if ($code == 200) {
             $result = json_decode($msg, true);
