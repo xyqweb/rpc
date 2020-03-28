@@ -3,21 +3,27 @@ declare(strict_types = 1);
 /**
  * Created by PhpStorm.
  * User: XYQ
- * Date: 2020-03-27
- * Time: 14:31
+ * Date: 2020-03-28
+ * Time: 10:06
  */
 
 namespace xyqWeb\rpc;
 
-
 use xyqWeb\rpc\strategy\RpcException;
+use yii\base\Component;
+use yii\base\Application as BaseApp;
+use yii\base\Event;
 
-class Request
+class YiiRequest extends Component
 {
     /**
-     * @var $_instance
+     * @var string
      */
-    private static $_instance = null;
+    public $driver = 'http';
+    /**
+     * @var array 配置
+     */
+    public $config = [];
     /**
      * @var null|\xyqWeb\rpc\strategy\ParallelRequest|\xyqWeb\rpc\strategy\SerialRequest
      */
@@ -25,7 +31,19 @@ class Request
     /**
      * @var null
      */
-    private static $rpc = null;
+    private $rpc = null;
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        parent::init();
+        $this->initRpc($this->driver, $this->config);
+        Event::on(BaseApp::class, BaseApp::EVENT_AFTER_REQUEST, function () {
+            $this->close();
+        });
+    }
 
     /**
      * 初始化Rpc
@@ -35,28 +53,15 @@ class Request
      * @param array $config
      * @throws RpcException
      */
-    public static function initRpc(string $strategy, array $config = [])
+    public function initRpc(string $strategy, array $config = [])
     {
         if (!in_array($strategy, ['yar', 'http'])) {
             throw new RpcException('RPC strategy error,only accept yar or http');
         }
         $class = "\\xyqWeb\\rpc\\drivers\\" . ucfirst($strategy);
-        self::$rpc = new $class($config);
+        $this->rpc = new $class($config);
     }
 
-    /**
-     * 单例入口
-     *
-     * @author xyq
-     * @return Request
-     */
-    public static function init() : Request
-    {
-        if (is_null(self::$_instance) || !self::$_instance instanceof Request) {
-            self::$_instance = new static();
-        }
-        return self::$_instance;
-    }
 
     /**
      * 设置参数
@@ -80,7 +85,7 @@ class Request
         $this->object->cleanResult();
         $this->object->setParams($urls);
         $this->object->setUserInfo($userInfo);
-        $this->object->setRpc(self::$rpc);
+        $this->object->setRpc($this->rpc);
         return $this;
     }
 
