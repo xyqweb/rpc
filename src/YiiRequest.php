@@ -101,4 +101,15 @@ class YiiRequest extends Component
     {
         return $this->object->get();
     }
+
+    /**
+     * 释放RPC连接对象
+     *
+     * @author xyq
+     */
+    public function close()
+    {
+        $this->object = null;
+        $this->rpc = null;
+    }
 }
