@@ -43,8 +43,9 @@ abstract class RequestFactory
     {
         if (is_array($token) || is_string($token) || is_null($token)) {
             $this->token = $token;
+        } else {
+            throw new Exception('token only accepet array or string or null');
         }
-        throw new Exception('token only accepet array or string or null');
     }
 
     /**
