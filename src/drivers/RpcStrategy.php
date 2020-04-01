@@ -51,10 +51,10 @@ abstract class RpcStrategy
      * @author xyq
      * @param string $url 请求URL
      * @param bool $isIndependent 独立站点标识
-     * @param array|null $userInfo
+     * @param array|string|null $token
      * @return mixed
      */
-    abstract public function setParams(string $url, bool $isIndependent = false, array $userInfo = null);
+    abstract public function setParams(string $url, bool $isIndependent = false, $token = null);
 
     /**
      * 获取串行请求结果
@@ -71,10 +71,10 @@ abstract class RpcStrategy
      *
      * @author xyq
      * @param array $urls
-     * @param array|null $userInfo
+     * @param array|string|null $token
      * @return mixed
      */
-    abstract public function setMultiParams(array $urls, array $userInfo = null);
+    abstract public function setMultiParams(array $urls, $token = null);
 
     /**
      * 获取并行请求结果
@@ -88,13 +88,14 @@ abstract class RpcStrategy
      * 获取发送的header
      *
      * @author xyq
-     * @param array|null $userInfo
+     * @param array|string|null $token
      * @return array
      */
-    protected function getHeaders(array $userInfo = null)
+    protected function getHeaders($token = null)
     {
+        $tokenKey = isset($this->params['tokenKey']) && !empty($this->params['tokenKey']) ? $this->params['tokenKey'] : 'token';
         $header = [
-            "token" => (is_array($userInfo) ? json_encode($userInfo) : '{}')
+            $tokenKey => (is_array($token) ? json_encode($token) : (is_string($token) ? $token : ""))
         ];
         $env = php_sapi_name();
         if ('cli' == $env) {

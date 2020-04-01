@@ -46,7 +46,6 @@ class SerialRequest extends RequestFactory
      * 调用远程地址
      *
      * @author xyq
-     * @throws RpcException
      * @throws Exception
      */
     protected function setMultiParams()
@@ -69,7 +68,7 @@ class SerialRequest extends RequestFactory
             }
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
             $result = $this->rpc
-                ->setParams($url['url'],$isIndependent, $this->userInfo)
+                ->setParams($url['url'],$isIndependent, $this->token)
                 ->get($url['method'], $postParams);
             if (!isset($url['callback'])) {
                 if (isset($url['key'])) {
@@ -89,7 +88,6 @@ class SerialRequest extends RequestFactory
      *
      * @author xyq
      * @return array|null
-     * @throws RpcException
      * @throws Exception
      */
     public function get()

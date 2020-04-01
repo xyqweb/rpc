@@ -37,21 +37,21 @@ class Http extends RpcStrategy
     }
 
     /**
-     * 设置URL、userInfo等参数
+     * 设置URL、token等参数
      *
      * @author xyq
      * @param string $url 请求地址
-     * @param array $userInfo 用户登录数据
+     * @param array|string|null $token 用户登录数据
      * @param bool $isIndependent 独立站点标识
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, bool $isIndependent = false, array $userInfo = null)
+    public function setParams(string $url, bool $isIndependent = false, $token = null)
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->url = $this->getRealUrl($url);
-        $this->headers = $this->getHeaders($userInfo);
+        $this->headers = $this->getHeaders($token);
         $this->isMulti = false;
         return $this;
     }
@@ -61,11 +61,11 @@ class Http extends RpcStrategy
      *
      * @author xyq
      * @param array $urls
-     * @param array|null $userInfo
+     * @param array|string|null $token
      * @return $this|mixed
      * @throws \Throwable
      */
-    public function setMultiParams(array $urls, array $userInfo = null)
+    public function setMultiParams(array $urls, $token = null)
     {
         $this->getClient();
         if (!$this->client instanceof Client) {
@@ -73,7 +73,7 @@ class Http extends RpcStrategy
         }
         $this->result = null;
         $this->isMulti = true;
-        $this->headers = $this->getHeaders($userInfo);
+        $this->headers = $this->getHeaders($token);
         $promises = [];
         foreach ($urls as $url) {
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;

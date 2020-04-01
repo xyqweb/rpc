@@ -68,12 +68,12 @@ class YiiRequest extends Component
      *
      * @author xyq
      * @param array $urls URL
-     * @param array|null $userInfo 用户登录信息
+     * @param array|string|null $token 用户登录信息
      * @param bool $isParallel 并行标识，false为串行，true为并行
      * @return $this
      * @throws \Exception
      */
-    public function setParams(array $urls, array $userInfo = null, $isParallel = false)
+    public function setParams(array $urls, $token = null, $isParallel = false)
     {
         if ($isParallel) {
             $className = 'Parallel';
@@ -84,7 +84,7 @@ class YiiRequest extends Component
         $this->object = new $className();
         $this->object->cleanResult();
         $this->object->setParams($urls);
-        $this->object->setUserInfo($userInfo);
+        $this->object->setToken($token);
         $this->object->setRpc($this->rpc);
         return $this;
     }

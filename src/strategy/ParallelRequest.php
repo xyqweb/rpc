@@ -53,7 +53,7 @@ class ParallelRequest extends RequestFactory
      */
     protected function setMultiParams()
     {
-        $this->rpc->setMultiParams($this->urlArray, $this->userInfo);
+        $this->rpc->setMultiParams($this->urlArray, $this->token);
     }
 
     /**

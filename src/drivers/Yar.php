@@ -20,21 +20,21 @@ class Yar extends RpcStrategy
     protected $urls = null;
 
     /**
-     * 设置URL、userInfo等参数
+     * 设置URL、token等参数
      *
      * @author xyq
      * @param string $url 请求地址
-     * @param array $userInfo 用户登录数据
+     * @param array|string|null $token 用户登录数据
      * @param bool $isIndependent 独立站点标识
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, bool $isIndependent = false, array $userInfo = null)
+    public function setParams(string $url, bool $isIndependent = false, $token = null)
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->client = new \Yar_Client($this->getRealUrl($url));
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
-        $this->client->SetOpt(YAR_OPT_HEADER, $this->getHeaders($userInfo));
+        $this->client->SetOpt(YAR_OPT_HEADER, $this->getHeaders($token));
         $this->client->SetOpt(YAR_OPT_PACKAGER, $this->params['yarPackageType']);
         $this->client->SetOpt(YAR_OPT_TIMEOUT, $this->params['timeout']);
         $this->isMulti = false;
@@ -46,11 +46,11 @@ class Yar extends RpcStrategy
      *
      * @author xyq
      * @param array $urls
-     * @param array $userInfo 用户数据
+     * @param array|string|null $token 用户数据
      * @return $this
      * @throws \Exception
      */
-    public function setMultiParams(array $urls, array $userInfo = null)
+    public function setMultiParams(array $urls, $token = null)
     {
         \Yar_Concurrent_Client::reset();
         $this->result = null;
@@ -58,7 +58,7 @@ class Yar extends RpcStrategy
         $this->isMulti = true;
         $header = [
             YAR_OPT_PERSISTENT => true,
-            YAR_OPT_HEADER     => $this->getHeaders($userInfo),
+            YAR_OPT_HEADER     => $this->getHeaders($token),
             YAR_OPT_PACKAGER   => $this->params['yarPackageType'],
             YAR_OPT_TIMEOUT    => $this->params['timeout'],
         ];

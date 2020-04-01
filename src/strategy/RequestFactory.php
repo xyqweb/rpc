@@ -16,9 +16,9 @@ use xyqWeb\rpc\drivers\RpcStrategy;
 abstract class RequestFactory
 {
     /**
-     * @var null|array
+     * @var null|array|string
      */
-    protected $userInfo = null;
+    protected $token = null;
     /**
      * @var null|array|string
      */
@@ -36,11 +36,15 @@ abstract class RequestFactory
      * 设置用户登录信息
      *
      * @author xyq
-     * @param array|null $userInfo
+     * @param null $token
+     * @throws Exception
      */
-    public function setUserInfo(array $userInfo = null)
+    public function setToken($token = null)
     {
-        $this->userInfo = $userInfo;
+        if (is_array($token) || is_string($token) || is_null($token)) {
+            $this->token = $token;
+        }
+        throw new Exception('token only accepet array or string or null');
     }
 
     /**
