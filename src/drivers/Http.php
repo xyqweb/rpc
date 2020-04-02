@@ -74,13 +74,23 @@ class Http extends RpcStrategy
         $this->result = null;
         $this->isMulti = true;
         $this->headers = $this->getHeaders($token);
+        $options = [
+            'headers' => $this->headers,
+        ];
         $promises = [];
         foreach ($urls as $url) {
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
-            $promises[$url['key']] = $this->client->requestAsync(strtoupper($url['method']), $this->getRealUrl($url['url'], $isIndependent), [
-                'headers' => $this->headers,
-                'json'    => $url['params'],
-            ]);
+            $realUrl = $this->getRealUrl($url['url'], $isIndependent);
+            $method = strtoupper($url['method']);
+            if ('GET' == $method) {
+                $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query($url['params']);
+                if (isset($options['json'])) {
+                    unset($options['json']);
+                }
+            } else {
+                $options['json'] = $url['params'];
+            }
+            $promises[$url['key']] = $this->client->requestAsync($method, $realUrl, $options);
         }
         $this->result = unwrap($promises);
         return $this;
@@ -103,10 +113,16 @@ class Http extends RpcStrategy
             if (!$this->client instanceof Client) {
                 throw new Exception('必须先设置URI！');
             }
-            $result = $this->client->request(strtoupper($method), $this->url, [
+            $method = strtoupper($method);
+            $options = [
                 'headers' => $this->headers,
-                'json'    => $data,
-            ]);
+            ];
+            if ('GET' == $method) {
+                $this->url .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query($data);
+            } else {
+                $options['json'] = $data;
+            }
+            $result = $this->client->request($method, $this->url, $options);
             $responseCode = $result->getStatusCode();
             return $this->formatResponse($result->getBody()->getContents(), $responseCode);
         } catch (Exception $e) {
