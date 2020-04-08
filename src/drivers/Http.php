@@ -147,7 +147,7 @@ class Http extends RpcStrategy
         $exceptionMsg = empty($key) ? '' : "键值{$key}：";
         if ($code == 200) {
             $result = json_decode($msg, true);
-            if (!isset($result['status']) || !isset($result['msg'])) {
+            if (!is_array($result)) {
                 $exceptionMsg .= "响应数据结构不合规范";
                 throw new RpcException($exceptionMsg, $code, $exceptionMsg);
             }

@@ -111,7 +111,7 @@ class Yar extends RpcStrategy
 //        var_dump($msg, $code, $key);die;
         if ($code == 2) {
             $result = json_decode(trim($msg, "'"), true);
-            if (!isset($result['status']) || !isset($result['msg'])) {
+            if (!is_array($result)) {
                 $exceptionMsg = empty($key) ? '' : "键值{$key}：";
                 $exceptionMsg .= "响应数据结构不合规范";
                 throw new RpcException($exceptionMsg, $code, $exceptionMsg);
