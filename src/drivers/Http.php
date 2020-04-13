@@ -50,7 +50,7 @@ class Http extends RpcStrategy
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
-        $this->url = $this->getRealUrl($url);
+        $this->url = $this->getRealUrl($url, $isIndependent);
         $this->headers = $this->getHeaders($token);
         $this->isMulti = false;
         return $this;

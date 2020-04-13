@@ -32,7 +32,7 @@ class Yar extends RpcStrategy
     public function setParams(string $url, bool $isIndependent = false, $token = null)
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
-        $this->client = new \Yar_Client($this->getRealUrl($url));
+        $this->client = new \Yar_Client($this->getRealUrl($url, $isIndependent));
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
         $this->client->SetOpt(YAR_OPT_HEADER, $this->getHeaders($token));
         $this->client->SetOpt(YAR_OPT_PACKAGER, $this->params['yarPackageType']);
