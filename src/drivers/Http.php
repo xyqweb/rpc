@@ -18,13 +18,21 @@ use xyqWeb\rpc\strategy\RpcException;
 class Http extends RpcStrategy
 {
     /**
-     * @var
+     * @var string 串行请求URL地址
      */
     private $url;
     /**
-     * @var array 请求头数组
+     * @var array 串行请求头数组
      */
     private $headers;
+    /**
+     * @var string 代理配置
+     */
+    private $proxy = '';
+    /**
+     * @var bool 串行请求的外网标识
+     */
+    private $isIndependent = false;
 
     /**
      * 获取客户端地址
@@ -33,6 +41,9 @@ class Http extends RpcStrategy
      */
     public function getClient()
     {
+        if (isset($this->params['proxy']) && isset($this->params['proxy']['host']) && !empty($this->params['proxy']['host']) && isset($this->params['proxy']['port']) && !empty($this->params['proxy']['port'])) {
+            $this->proxy = $this->params['proxy']['host'] . ':' . $this->params['proxy']['port'];
+        }
         $this->client = new Client(['connect_timeout' => 1, 'timeout' => $this->params['timeout'] / 1000]);
     }
 
@@ -51,6 +62,7 @@ class Http extends RpcStrategy
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->url = $this->getRealUrl($url, $isIndependent);
+        $this->isIndependent = $isIndependent;
         $this->headers = $this->getHeaders($token);
         $this->isMulti = false;
         return $this;
@@ -90,6 +102,9 @@ class Http extends RpcStrategy
             } else {
                 $options['json'] = $url['params'];
             }
+            if ($isIndependent && !empty($this->proxy)) {
+                $options['proxy'] = $this->proxy;
+            }
             $promises[$url['key']] = $this->client->requestAsync($method, $realUrl, $options);
         }
         $this->result = unwrap($promises);
@@ -105,7 +120,6 @@ class Http extends RpcStrategy
      * @param null|int|string|array $data 传输的参数
      * @return array
      * @throws RpcException
-     * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function get(string $method, $data = null) : array
     {
@@ -117,6 +131,9 @@ class Http extends RpcStrategy
             $options = [
                 'headers' => $this->headers,
             ];
+            if ($this->isIndependent && !empty($this->proxy)) {
+                $options['proxy'] = $this->proxy;
+            }
             if ('GET' == $method) {
                 $this->url .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query($data);
             } else {
