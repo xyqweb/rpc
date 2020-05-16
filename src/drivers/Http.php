@@ -44,7 +44,9 @@ class Http extends RpcStrategy
         if (isset($this->params['proxy']) && isset($this->params['proxy']['host']) && !empty($this->params['proxy']['host']) && isset($this->params['proxy']['port']) && !empty($this->params['proxy']['port'])) {
             $this->proxy = $this->params['proxy']['host'] . ':' . $this->params['proxy']['port'];
         }
-        $this->client = new Client(['connect_timeout' => 1, 'timeout' => $this->params['timeout'] / 1000]);
+        if (!($this->client instanceof Client)) {
+            $this->client = new Client(['connect_timeout' => 1, 'timeout' => $this->params['timeout'] / 1000]);
+        }
     }
 
     /**
