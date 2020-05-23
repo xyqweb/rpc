@@ -161,7 +161,11 @@ abstract class RpcStrategy
                 }
                 $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
                 if ('local' != $this->params['server']) {
-                    $realUrl .= $domain[$first] . implode('/', $url);
+                    if (0 === strpos($domain[$first], 'http')) {
+                        $realUrl = $domain[$first] . implode('/', $url);
+                    } else {
+                        $realUrl .= $domain[$first] . implode('/', $url);
+                    }
                 } else {
                     $realUrl .= $first . $this->params['rootDomain'] . implode('/', $url);
                 }
