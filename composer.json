@@ -4,8 +4,11 @@
   "type": "library",
   "require": {
     "php": ">=7.1.0",
-    "ext-json": "*",
-    "guzzlehttp/guzzle": "6.0"
+    "ext-json": "*"
+  },
+  "suggest": {
+    "ext-yar": "Need for yar require.",
+    "guzzlehttp/guzzle": "Need for http request."
   },
   "license": "Apache-2.0",
   "authors": [
