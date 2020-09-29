@@ -54,18 +54,19 @@ class Http extends RpcStrategy
      *
      * @author xyq
      * @param string $url 请求地址
-     * @param array|string|null $token 用户登录数据
      * @param bool $isIndependent 独立站点标识
+     * @param array|string|null $token 用户登录数据
+     * @param array $headers
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, bool $isIndependent = false, $token = null)
+    public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = [])
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->url = $this->getRealUrl($url, $isIndependent);
         $this->isIndependent = $isIndependent;
-        $this->headers = $this->getHeaders($token);
+        $this->headers = $this->getHeaders($token, $headers);
         $this->isMulti = false;
         return $this;
     }
@@ -87,10 +88,7 @@ class Http extends RpcStrategy
         }
         $this->result = null;
         $this->isMulti = true;
-        $this->headers = $this->getHeaders($token);
-        $options = [
-            'headers' => $this->headers,
-        ];
+        $options = [];
         $promises = [];
         foreach ($urls as $url) {
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
@@ -107,12 +105,12 @@ class Http extends RpcStrategy
             if ($isIndependent && !empty($this->proxy)) {
                 $options['proxy'] = $this->proxy;
             }
+            $options['headers'] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : []);
             $promises[$url['key']] = $this->client->requestAsync($method, $realUrl, $options);
         }
         $this->result = unwrap($promises);
         return $this;
     }
-
 
     /**
      * 获取最终数据
@@ -121,6 +119,8 @@ class Http extends RpcStrategy
      * @param string $method 对地址中service内的方法名称
      * @param null|int|string|array $data 传输的参数
      * @return array
+     * @throws RpcException
+     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws RpcException
      */
     public function get(string $method, $data = null) : array

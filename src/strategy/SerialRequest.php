@@ -68,7 +68,7 @@ class SerialRequest extends RequestFactory
             }
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
             $result = $this->rpc
-                ->setParams($url['url'],$isIndependent, $this->token)
+                ->setParams($url['url'], $isIndependent, $this->token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [])
                 ->get($url['method'], $postParams);
             if (!isset($url['callback'])) {
                 if (isset($url['key'])) {

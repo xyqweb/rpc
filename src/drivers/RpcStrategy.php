@@ -85,18 +85,38 @@ abstract class RpcStrategy
     abstract public function multiGet() : array;
 
     /**
+     *
+     *
+     * @author xyq
+     * @param bool $isMap 是否为keyValue的键值映射方式
+     * @return array
+     */
+    /**
      * 获取发送的header
      *
      * @author xyq
-     * @param array|string|null $token
+     * @param null $token 安全标示token
+     * @param array $headers 自定义header
+     * @param string|null $glue 分割方式
      * @return array
+     * @throws \Exception
      */
-    protected function getHeaders($token = null)
+    protected function getHeaders($token = null, array $headers = [], string $glue = null)
     {
         $tokenKey = isset($this->params['tokenKey']) && !empty($this->params['tokenKey']) ? $this->params['tokenKey'] : 'token';
         $header = [
             $tokenKey => (is_array($token) ? json_encode($token) : (is_string($token) ? $token : ""))
         ];
+        if (!empty($headers)) {
+            foreach ($headers as $key => $value) {
+                if (!isset($header[$key])) {
+                    if (is_object($value)) {
+                        throw new \Exception('Object not supported for header ' . $key);
+                    }
+                    $header[$key] = is_array($value) ? json_encode($value) : $value;
+                }
+            }
+        }
         $env = php_sapi_name();
         if ('cli' == $env) {
             $header['env'] = "shell";
@@ -104,6 +124,14 @@ abstract class RpcStrategy
             $header['env'] = 'browser';
         }
         $header["x-real-ip"] = $this->getUserIp();
+        if (!empty($glue)) {
+            $finalHeader = [];
+            foreach ($header as $key => $value) {
+                $finalHeader[] = $key . $glue . $value;
+            }
+            unset($header);
+            return $finalHeader;
+        }
         return $header;
     }
 

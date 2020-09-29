@@ -24,17 +24,18 @@ class Yar extends RpcStrategy
      *
      * @author xyq
      * @param string $url 请求地址
-     * @param array|string|null $token 用户登录数据
      * @param bool $isIndependent 独立站点标识
+     * @param array|string|null $token 用户登录数据
+     * @param array $headers 自定义headers
      * @return $this
      * @throws \Exception
      */
-    public function setParams(string $url, bool $isIndependent = false, $token = null)
+    public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = [])
     {
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->client = new \Yar_Client($this->getRealUrl($url, $isIndependent));
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
-        $this->client->SetOpt(YAR_OPT_HEADER, $this->getHeaders($token));
+        $this->client->SetOpt(YAR_OPT_HEADER, $this->getHeaders($token, $headers, ':'));
         $this->client->SetOpt(YAR_OPT_PACKAGER, $this->params['yarPackageType']);
         $this->client->SetOpt(YAR_OPT_TIMEOUT, $this->params['timeout']);
         $this->isMulti = false;
@@ -58,13 +59,14 @@ class Yar extends RpcStrategy
         $this->isMulti = true;
         $header = [
             YAR_OPT_PERSISTENT => true,
-            YAR_OPT_HEADER     => $this->getHeaders($token),
+//            YAR_OPT_HEADER     => $this->getHeaders($token),
             YAR_OPT_PACKAGER   => $this->params['yarPackageType'],
             YAR_OPT_TIMEOUT    => $this->params['timeout'],
         ];
         $urls = array_values($urls);
         foreach ($urls as $key => $url) {
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
+            $header[YAR_OPT_HEADER] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [], ':');
             \Yar_Concurrent_Client::call($this->getRealUrl($url['url'], $isIndependent), $url['method'], isset($url['params']) ? ['params' => $url['params']] : null, null, null, $header);
         }
         $this->urls = $urls;
