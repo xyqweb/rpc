@@ -43,7 +43,7 @@ class SerialRequest extends RequestFactory
     }
 
     /**
-     * 调用远程地址
+     * 向RPC注入参数并发起请求
      *
      * @author xyq
      * @throws Exception

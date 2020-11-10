@@ -30,6 +30,10 @@ abstract class RpcStrategy
      * @var bool
      */
     protected $isMulti = false;
+    /**
+     * @var array 内网网址列表
+     */
+    private $intranetAddress = [];
 
     /**
      * RpcStrategy constructor.
@@ -52,9 +56,10 @@ abstract class RpcStrategy
      * @param string $url 请求URL
      * @param bool $isIndependent 独立站点标识
      * @param array|string|null $token
+     * @param array $headers 自定义headers
      * @return mixed
      */
-    abstract public function setParams(string $url, bool $isIndependent = false, $token = null);
+    abstract public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = []);
 
     /**
      * 获取串行请求结果
@@ -201,5 +206,73 @@ abstract class RpcStrategy
 //            echo $realUrl."\n";
             return $realUrl;
         }
+    }
+
+    /**
+     * 设置内网网址
+     *
+     * @author xyq
+     * @param array $address
+     */
+    public function setIntranetAddress(array $address)
+    {
+        $this->intranetAddress = $address;
+    }
+
+    /**
+     * 判断外网标识，如果是内网ip时强制把是返回false
+     *
+     * @author xyq
+     * @param bool $isIndependent
+     * @param string $url
+     * @return bool
+     */
+    protected function needProxy(bool $isIndependent, string $url)
+    {
+        if (!$isIndependent) {
+            return false;
+        }
+        $info = parse_url($url);
+        if (!isset($info['host']) || empty($info['host'])) {
+            return false;
+        }
+        $convert = ip2long($info['host']);
+        $needProxy = true;
+        if (!is_int($convert)) {
+            if (!empty($this->intranetAddress)) {
+                foreach ($this->intranetAddress as $intranetAddress) {
+                    if ($info['host'] == $intranetAddress) {
+                        $needProxy = false;
+                        break;
+                    }
+                }
+            }
+            return $needProxy;
+        }
+        $innerIpArray = [
+            [
+                'min' => 167772160,//10.0.0.0
+                'max' => 184549375,//10.255.255.255
+            ],
+            [
+                'min' => 2130706432,//127.0.0.0
+                'max' => 2147483647,//127.255.255.255
+            ],
+            [
+                'min' => 2885681152,//172.0.0.0
+                'max' => 2902458367,//172.255.255.255
+            ],
+            [
+                'min' => 3221225472,//192.0.0.0
+                'max' => 3238002687,//192.255.255.255
+            ],
+        ];
+        foreach ($innerIpArray as $item) {
+            if ($convert >= $item['min'] && $convert <= $item['max']) {
+                $needProxy = false;
+                break;
+            }
+        }
+        return $needProxy;
     }
 }

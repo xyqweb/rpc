@@ -89,7 +89,6 @@ class Request
      *
      * @author xyq
      * @return array
-     * @throws strategy\RpcException
      * @throws \Exception
      */
     public function get() : array

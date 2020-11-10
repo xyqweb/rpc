@@ -94,7 +94,7 @@ class Yar extends RpcStrategy
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             $msg = str_replace('malformed response header ', '', $msg);
-            return $this->formatResponse(trim($msg, "'"), $e->getCode());
+            return $this->formatResponse(trim($msg, "'"), (int)$e->getCode());
         }
     }
 
@@ -115,14 +115,14 @@ class Yar extends RpcStrategy
             $result = json_decode(trim($msg, "'"), true);
             if (!is_array($result)) {
                 $exceptionMsg = empty($key) ? '' : "键值{$key}：";
-                $exceptionMsg .= "响应数据结构不合规范";
+                $exceptionMsg .= '响应数据结构不合规范';
                 throw new RpcException($exceptionMsg, $code, $exceptionMsg);
             }
             return $result;
         } elseif ($code == 16) {
             $finalMsg = trim(str_replace('server responsed non-200 code ', '', $msg), "''");
             if (404 == $finalMsg) {
-                $msg = "服务URL地址不存在";
+                $msg = '服务URL地址不存在';
             } elseif (500 == $finalMsg) {
                 $msg = '服务内部错误';
             } else {
@@ -131,6 +131,8 @@ class Yar extends RpcStrategy
             $exceptionMsg = empty($key) ? '' : "键值{$key}：";
             if (is_int(strpos($msg, 'Timeout was reached'))) {
                 $msg = '服务响应超时';
+            } elseif (is_int(strpos($msg, "Couldn't connect to server"))) {
+                $msg = '连接服务失败';
             }
             $exceptionMsg .= $msg;
             throw new RpcException($exceptionMsg, $code, $exceptionMsg);
@@ -162,7 +164,7 @@ class Yar extends RpcStrategy
             function ($type, $error, $callInfo) {
                 $key = $this->urls[$callInfo['sequence'] - 1]['key'];
                 $error = str_replace('malformed response header ', '', $error);
-                $this->result[$key] = $this->formatResponse(!is_string($error) ? json_encode($error) : $error, $type, $key);
+                $this->result[$key] = $this->formatResponse(!is_string($error) ? json_encode($error) : $error, (int)$type, $key);
             });
         return ['status' => 1, 'msg' => '获取成功', 'data' => $this->result];
     }

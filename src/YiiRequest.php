@@ -94,7 +94,6 @@ class YiiRequest extends Component
      *
      * @author xyq
      * @return array
-     * @throws strategy\RpcException
      * @throws \Exception
      */
     public function get() : array

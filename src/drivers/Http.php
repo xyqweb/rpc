@@ -45,7 +45,8 @@ class Http extends RpcStrategy
             $this->proxy = $this->params['proxy']['host'] . ':' . $this->params['proxy']['port'];
         }
         if (!($this->client instanceof Client)) {
-            $this->client = new Client(['connect_timeout' => 1, 'timeout' => $this->params['timeout'] / 1000]);
+            $connectTimeout = isset($this->params['connect_timeout']) && $this->params['connect_timeout'] > 0 ? $this->params['connect_timeout'] : 1;
+            $this->client = new Client(['connect_timeout' => $connectTimeout, 'timeout' => $this->params['timeout'] / 1000]);
         }
     }
 
@@ -102,7 +103,8 @@ class Http extends RpcStrategy
             } else {
                 $options['json'] = $url['params'];
             }
-            if ($isIndependent && !empty($this->proxy)) {
+            $needProxy = $this->needProxy($isIndependent, $realUrl);
+            if ($needProxy && !empty($this->proxy)) {
                 $options['proxy'] = $this->proxy;
             }
             $options['headers'] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : []);
@@ -133,7 +135,8 @@ class Http extends RpcStrategy
             $options = [
                 'headers' => $this->headers,
             ];
-            if ($this->isIndependent && !empty($this->proxy)) {
+            $needProxy = $this->needProxy($this->isIndependent, $this->url);
+            if ($needProxy && !empty($this->proxy)) {
                 $options['proxy'] = $this->proxy;
             }
             if ('GET' == $method) {
@@ -143,7 +146,7 @@ class Http extends RpcStrategy
             }
             $result = $this->client->request($method, $this->url, $options);
             $responseCode = $result->getStatusCode();
-            return $this->formatResponse($result->getBody()->getContents(), $responseCode);
+            return $this->formatResponse($result->getBody()->getContents(), (int)$responseCode);
         } catch (Exception $e) {
             return $this->formatResponse($e->getMessage(), $e->getCode());
         }
@@ -194,6 +197,7 @@ class Http extends RpcStrategy
      *
      * @author xyq
      * @return array
+     * @throws RpcException
      * @throws \Exception
      */
     public function multiGet() : array
@@ -202,7 +206,7 @@ class Http extends RpcStrategy
         foreach ($this->result as $key => $item) {
             /** @var $item \GuzzleHttp\Psr7\Response */
             $responseCode = $item->getStatusCode();
-            $finalResult[$key] = $this->formatResponse($item->getBody()->getContents(), $responseCode);
+            $finalResult[$key] = $this->formatResponse($item->getBody()->getContents(), (int)$responseCode);
         }
         return ['status' => 1, 'msg' => '获取成功', 'data' => $finalResult];
     }
