@@ -46,6 +46,12 @@ abstract class RpcStrategy
         if (!isset($params['timeout']) || !is_int($params['timeout'])) {
             $params['timeout'] = 5000;
         }
+        if (isset($params['intranetAddress'])) {
+            if (is_array($params['intranetAddress']) && !empty($params['intranetAddress'])) {
+                $this->intranetAddress = $params['intranetAddress'];
+            }
+            unset($params['intranetAddress']);
+        }
         $this->params = $params;
     }
 
@@ -206,17 +212,6 @@ abstract class RpcStrategy
 //            echo $realUrl."\n";
             return $realUrl;
         }
-    }
-
-    /**
-     * 设置内网网址
-     *
-     * @author xyq
-     * @param array $address
-     */
-    public function setIntranetAddress(array $address)
-    {
-        $this->intranetAddress = $address;
     }
 
     /**
