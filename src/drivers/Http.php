@@ -10,9 +10,10 @@ declare(strict_types = 1);
 namespace xyqWeb\rpc\drivers;
 
 
-use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use function GuzzleHttp\Promise\unwrap;
+use Psr\Http\Message\ResponseInterface;
 use xyqWeb\rpc\strategy\RpcException;
 
 class Http extends RpcStrategy
@@ -45,8 +46,23 @@ class Http extends RpcStrategy
             $this->proxy = $this->params['proxy']['host'] . ':' . $this->params['proxy']['port'];
         }
         if (!($this->client instanceof Client)) {
-            $connectTimeout = isset($this->params['connect_timeout']) && $this->params['connect_timeout'] > 0 ? $this->params['connect_timeout'] : 1;
-            $this->client = new Client(['connect_timeout' => $connectTimeout, 'timeout' => $this->params['timeout'] / 1000]);
+            $connectTimeout = 1;
+            if (isset($this->params['connect_timeout'])) {
+                if ($this->params['connect_timeout'] > 1000) {
+                    $connectTimeout = $this->params['connect_timeout'] / 1000;
+                } else {
+                    $connectTimeout = $this->params['connect_timeout'];
+                }
+            }
+            $responseTimeout = 5;
+            if (isset($this->params['timeout'])) {
+                if ($this->params['timeout'] > 1000) {
+                    $responseTimeout = $this->params['timeout'] / 1000;
+                } else {
+                    $responseTimeout = $this->params['timeout'];
+                }
+            }
+            $this->client = new Client(['connect_timeout' => $connectTimeout, 'timeout' => $responseTimeout]);
         }
     }
 
@@ -63,12 +79,19 @@ class Http extends RpcStrategy
      */
     public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = [])
     {
+        $this->request_time = microtime(true);
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->url = $this->getRealUrl($url, $isIndependent);
+        $this->requireKey = md5($this->url);
         $this->isIndependent = $isIndependent;
         $this->headers = $this->getHeaders($token, $headers);
         $this->isMulti = false;
+        $this->logData[$this->requireKey] = [
+            'url'          => $this->url,
+            'headers'      => $this->headers,
+            'request_time' => $this->request_time,
+        ];
         return $this;
     }
 
@@ -77,59 +100,71 @@ class Http extends RpcStrategy
      *
      * @author xyq
      * @param array $urls
-     * @param array|string|null $token
+     * @param null $token
      * @return $this|mixed
      * @throws \Throwable
      */
     public function setMultiParams(array $urls, $token = null)
     {
         $this->getClient();
-        if (!$this->client instanceof Client) {
-            throw new \Exception('必须先设置URI！');
-        }
+        $this->request_time = microtime(true);
         $this->result = null;
         $this->isMulti = true;
         $options = [];
         $promises = [];
-        foreach ($urls as $url) {
-            $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
-            $realUrl = $this->getRealUrl($url['url'], $isIndependent);
-            $method = strtoupper($url['method']);
-            if ('GET' == $method) {
-                $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query($url['params']);
-                if (isset($options['json'])) {
-                    unset($options['json']);
+        $key = null;
+        try {
+            foreach ($urls as $url) {
+                $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
+                $key = $url['key'];
+                $realUrl = $this->getRealUrl($url['url'], $isIndependent);
+                $method = strtoupper($url['method']);
+                if ('GET' == $method) {
+                    $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query($url['params']);
+                    if (isset($options['json'])) {
+                        unset($options['json']);
+                    }
+                } else {
+                    $options['json'] = $url['params'];
                 }
-            } else {
-                $options['json'] = $url['params'];
+                $this->requireKey = md5($realUrl);
+                $needProxy = $this->needProxy($isIndependent, $realUrl);
+                if ($needProxy && !empty($this->proxy)) {
+                    $options['proxy'] = $this->proxy;
+                }
+                $options['headers'] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : []);
+                $this->logData[$this->requireKey] = [
+                    'url'          => $realUrl,
+                    'method'       => $method,
+                    'proxy'        => $options['proxy'] ?? [],
+                    'headers'      => $options['headers'],
+                    'params'       => $options['json'] ?? [],
+                    'request_time' => $this->request_time,
+                ];
+                $promises[$key] = $this->client->requestAsync($method, $realUrl, $options);
             }
-            $needProxy = $this->needProxy($isIndependent, $realUrl);
-            if ($needProxy && !empty($this->proxy)) {
-                $options['proxy'] = $this->proxy;
-            }
-            $options['headers'] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : []);
-            $promises[$url['key']] = $this->client->requestAsync($method, $realUrl, $options);
+            $this->result = unwrap($promises);
+        } catch (\Exception $e) {
+            $this->result[$key] = $e;
         }
-        $this->result = unwrap($promises);
         return $this;
     }
 
     /**
-     * 获取最终数据
+     * 发起请求并返回结果
      *
      * @author xyq
      * @param string $method 对地址中service内的方法名称
-     * @param null|int|string|array $data 传输的参数
+     * @param null $data 传输的参数
      * @return array
-     * @throws RpcException
-     * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws RpcException
      */
     public function get(string $method, $data = null) : array
     {
+        $e = $result = null;
         try {
             if (!$this->client instanceof Client) {
-                throw new Exception('必须先设置URI！');
+                throw new RpcException('必须先设置URI！', 500);
             }
             $method = strtoupper($method);
             $options = [
@@ -139,17 +174,37 @@ class Http extends RpcStrategy
             if ($needProxy && !empty($this->proxy)) {
                 $options['proxy'] = $this->proxy;
             }
+            $realUrl = $this->url;
             if ('GET' == $method) {
-                $this->url .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query($data);
+                $realUrl .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query($data);
             } else {
                 $options['json'] = $data;
             }
-            $result = $this->client->request($method, $this->url, $options);
+            $this->logData[$this->requireKey]['method'] = $method;
+            $this->logData[$this->requireKey]['proxy'] = $options['proxy'] ?? [];
+            $this->logData[$this->requireKey]['params'] = $options['params'] ?? [];
+            $result = $this->client->request($method, $realUrl, $options);
             $responseCode = $result->getStatusCode();
-            return $this->formatResponse($result->getBody()->getContents(), (int)$responseCode);
-        } catch (Exception $e) {
-            return $this->formatResponse($e->getMessage(), $e->getCode());
+            $result = $this->formatResponse($result->getBody()->getContents(), (int)$responseCode);
+        } catch (GuzzleException $e) {
+        } catch (\Exception $e) {
+        } catch (\TypeError $e) {
+        } catch (\Throwable $e) {
         }
+        if (is_object($e)) {
+            $result = $this->formatResponse($e->getMessage(), (int)$e->getCode());
+            unset($e);
+        }
+        $this->logData[$this->requireKey]['use_time'] = microtime(true) - $this->request_time;
+        $this->logData[$this->requireKey]['result'] = $result;
+        if (!is_array($result)) {
+            if ($this->display_error) {
+                throw new RpcException($result, 500);
+            } else {
+                $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+            }
+        }
+        return $result;
     }
 
     /**
@@ -160,26 +215,21 @@ class Http extends RpcStrategy
      * @param int $code 响应code
      * @param string $key 并行请求的key值
      * @return array|string
-     * @throws RpcException
      */
     protected function formatResponse(string $msg, int $code = 200, $key = '')
     {
-//        var_dump($msg, $code, $key);
-//        die;
         $exceptionMsg = empty($key) ? '' : "键值{$key}：";
         if ($code == 200) {
             $result = json_decode($msg, true);
             if (!is_array($result)) {
                 $exceptionMsg .= "响应数据结构不合规范";
-                throw new RpcException($exceptionMsg, $code, $exceptionMsg);
+                return $exceptionMsg;
             }
             return $result;
         } elseif ($code == 404) {
             $exceptionMsg .= "服务URL地址不存在";
-            throw new RpcException($exceptionMsg, $code, $exceptionMsg);
         } elseif ($code == 500) {
             $exceptionMsg .= '服务内部错误';
-            throw new RpcException($exceptionMsg, $code, $exceptionMsg);
         } else {
             $temp = current(explode(':', $msg));
             preg_match('/\d+/', $temp, $arr);
@@ -188,8 +238,8 @@ class Http extends RpcStrategy
             } else {
                 $exceptionMsg .= '服务异常：' . $msg;
             }
-            throw new RpcException($exceptionMsg, $code, $exceptionMsg);
         }
+        return $exceptionMsg;
     }
 
     /**
@@ -198,15 +248,31 @@ class Http extends RpcStrategy
      * @author xyq
      * @return array
      * @throws RpcException
-     * @throws \Exception
      */
     public function multiGet() : array
     {
         $finalResult = [];
         foreach ($this->result as $key => $item) {
-            /** @var $item \GuzzleHttp\Psr7\Response */
-            $responseCode = $item->getStatusCode();
-            $finalResult[$key] = $this->formatResponse($item->getBody()->getContents(), (int)$responseCode);
+            if ($item instanceof ResponseInterface) {
+                $responseCode = $item->getStatusCode();
+                $result = $this->formatResponse($item->getBody()->getContents(), (int)$responseCode);
+            } elseif ($item instanceof \Exception) {
+                $errCode = (int)$item->getCode();
+                $errMsg = $this->formatResponse($item->getMessage(), $errCode);
+                $result = $errMsg;
+            } else {
+                $result = $item;
+            }
+            $this->logData[$this->requireKey]['use_time'] = microtime(true) - $this->request_time;
+            $this->logData[$this->requireKey]['result'] = $result;
+            if (!is_array($result)) {
+                if ($this->display_error) {
+                    throw new RpcException($result, 500);
+                } else {
+                    $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+                }
+            }
+            $finalResult[$key] = $result;
         }
         return ['status' => 1, 'msg' => '获取成功', 'data' => $finalResult];
     }
@@ -266,7 +332,7 @@ class Http extends RpcStrategy
             53 => '加密引擎未找到',
             54 => '设定默认SSL加密失败',
             55 => '无法发送网络数据',
-            56 => '衰竭接收网络数据',
+            56 => '接收数据失败',
             57 => '未知错误',
             58 => '本地客户端证书',
             59 => '无法使用密码',

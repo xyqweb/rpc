@@ -58,7 +58,10 @@ class YiiRequest extends Component
         if (!in_array($strategy, ['yar', 'http'])) {
             throw new RpcException('RPC strategy error,only accept yar or http');
         }
-        $class = "\\xyqWeb\\rpc\\drivers\\" . ucfirst($strategy);
+        if (isset($config['log']['driver']) && !empty($config['log']['driver'])) {
+            $config['log']['driver'] = \Yii::$app->get($config['log']['driver']);
+        }
+        $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         $this->rpc = new $class($config);
     }
 
@@ -94,11 +97,27 @@ class YiiRequest extends Component
      *
      * @author xyq
      * @return array
-     * @throws \Exception
+     * @throws RpcException
      */
     public function get() : array
     {
-        return $this->object->get();
+        $errMsg = $result = null;
+        try {
+            $result = $this->object->get();
+        } catch (RpcException $e) {
+            $errMsg = $e->getMessage();
+        } catch (\Exception $e) {
+            $errMsg = $e->getMessage();
+        } catch (\TypeError $e) {
+            $errMsg = $e->getMessage();
+        } catch (\Throwable $e) {
+            $errMsg = $e->getMessage();
+        }
+        $this->object->saveLog();
+        if (!is_null($errMsg)) {
+            throw new RpcException($errMsg, 500, $errMsg);
+        }
+        return $result;
     }
 
     /**

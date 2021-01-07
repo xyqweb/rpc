@@ -10,37 +10,35 @@ declare(strict_types = 1);
 namespace xyqWeb\rpc\strategy;
 
 
-use Exception;
-
 class ParallelRequest extends RequestFactory
 {
     /**
      * 验证参数
      *
      * @author xyq
-     * @throws Exception
+     * @throws RpcException
      */
     protected function checkParams()
     {
         if (count($this->urlArray) == count($this->urlArray, COUNT_RECURSIVE)) {
-            throw new Exception('请调用串行类');
+            throw new RpcException('请调用串行类');
         }
         foreach ($this->urlArray as $key => &$url) {
             if (!isset($url['url']) || empty($url['url'])) {
                 if (!isset($url['outer']) || false == $url['outer']) {
                     if (strpos($url['url'], '_') !== 0) {
-                        throw new Exception('请设置第' . ($key + 1) . '个的URL参数或者参数不正确');
+                        throw new RpcException('请设置第' . ($key + 1) . '个的URL参数或者参数不正确');
                     }
                 }
             }
             if (!isset($url['method']) || empty($url['method'])) {
-                throw new Exception('请设置第' . ($key + 1) . '个的方法名称或者请求方式');
+                throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式');
             }
             if (!isset($url['params'])) {
                 $url['params'] = null;
             }
             if (!isset($url['key']) || is_null($url['key'])) {
-                throw new Exception('请设置第' . ($key + 1) . '个的返回键名');
+                throw new RpcException('请设置第' . ($key + 1) . '个的返回键名');
             }
         }
     }
@@ -49,7 +47,6 @@ class ParallelRequest extends RequestFactory
      * 向RPC注入参数
      *
      * @author xyq
-     * @throws Exception
      */
     protected function setMultiParams()
     {
@@ -61,7 +58,7 @@ class ParallelRequest extends RequestFactory
      *
      * @author xyq
      * @return array
-     * @throws Exception
+     * @throws RpcException
      */
     public function get()
     {

@@ -10,7 +10,6 @@ declare(strict_types = 1);
 namespace xyqWeb\rpc\strategy;
 
 
-use Exception;
 use xyqWeb\rpc\drivers\RpcStrategy;
 
 abstract class RequestFactory
@@ -37,14 +36,14 @@ abstract class RequestFactory
      *
      * @author xyq
      * @param null $token
-     * @throws Exception
+     * @throws RpcException
      */
     public function setToken($token = null)
     {
         if (is_array($token) || is_string($token) || is_null($token)) {
             $this->token = $token;
         } else {
-            throw new Exception('token only accepet array or string or null');
+            throw new RpcException('token only accepet array or string or null');
         }
     }
 
@@ -53,12 +52,12 @@ abstract class RequestFactory
      *
      * @author xyq
      * @param array $urlArray url数组
-     * @throws Exception
+     * @throws RpcException
      */
     public function setParams(array $urlArray)
     {
         if (empty($urlArray) || !is_array($urlArray)) {
-            throw new Exception('URL参数设置错误');
+            throw new RpcException('URL参数设置错误');
         }
         $this->urlArray = $urlArray;
     }
@@ -82,6 +81,17 @@ abstract class RequestFactory
     public function cleanResult()
     {
         $this->result = null;
+    }
+
+    /**
+     * 保存日志
+     *
+     * @author xyq
+     * @return bool|null
+     */
+    public function saveLog()
+    {
+        return $this->rpc->saveLog();
     }
 
     /**

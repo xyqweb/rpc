@@ -10,15 +10,13 @@ declare(strict_types = 1);
 namespace xyqWeb\rpc\strategy;
 
 
-use Exception;
-
 class SerialRequest extends RequestFactory
 {
     /**
      * 验证参数验证参数
      *
      * @author xyq
-     * @throws Exception
+     * @throws RpcException
      */
     protected function checkParams()
     {
@@ -26,18 +24,18 @@ class SerialRequest extends RequestFactory
             if (!isset($url['url']) || empty($url['url'])) {
                 if (!isset($url['outer']) || false == $url['outer']) {
                     if (strpos($url['url'], '_') !== 0) {
-                        throw new Exception('请设置第' . ($key + 1) . '个的URL参数或者参数不正确');
+                        throw new RpcException('请设置第' . ($key + 1) . '个的URL参数或者参数不正确', 500);
                     }
                 }
             }
             if (!isset($url['method']) || empty($url['method'])) {
-                throw new Exception('请设置第' . ($key + 1) . '个的方法名称或者请求方式');
+                throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式', 500);
             }
             if (!isset($url['params'])) {
                 $url['params'] = null;
             }
             if (isset($url['callback']) && (empty($url['callback']) || !is_array($url['callback']))) {
-                throw new Exception('请正确设置第' . ($key + 1) . '个的回调参数');
+                throw new RpcException('请正确设置第' . ($key + 1) . '个的回调参数', 500);
             }
         }
     }
@@ -46,7 +44,7 @@ class SerialRequest extends RequestFactory
      * 向RPC注入参数并发起请求
      *
      * @author xyq
-     * @throws Exception
+     * @throws RpcException
      */
     protected function setMultiParams()
     {
@@ -55,7 +53,7 @@ class SerialRequest extends RequestFactory
         $result = '';
         foreach ($this->urlArray as $key => $url) {
             if (!is_array($params)) {
-                throw new Exception('在处理第' . ($key + 1) . '请求时回调参数错误');
+                throw new RpcException('在处理第' . ($key + 1) . '请求时回调参数错误');
             }
             if (is_array($url['params'])) {
                 $postParams = $url['params'];
@@ -88,7 +86,7 @@ class SerialRequest extends RequestFactory
      *
      * @author xyq
      * @return array|null
-     * @throws Exception
+     * @throws RpcException
      */
     public function get()
     {
