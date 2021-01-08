@@ -78,7 +78,7 @@ class Yar extends RpcStrategy
             $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
             $header[YAR_OPT_HEADER] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [], ':');
             $realUrl = $this->getRealUrl($url['url'], $isIndependent);
-            $this->logData[md5($url['key'])] = [
+            $this->logData[md5('key' . $url['key'])] = [
                 'url'          => $realUrl,
                 'header'       => $header,
                 'params'       => $url['params'],
@@ -191,54 +191,64 @@ class Yar extends RpcStrategy
         //成功的回调函数zz
             function ($data, $callInfo) {
                 if ($callInfo != NULL) {
-                    $urlItem = $this->urls[$callInfo['sequence'] - 1];
-                    $key = $urlItem['key'];
-                    $result = $this->formatResponse($data, 2, $key);
-                    $this->logData[md5($urlItem['key'])]['use_time'] = microtime(true) - $this->request_time;
-                    $this->logData[md5($urlItem['key'])]['result'] = $result;
-                    if (!is_array($result)) {
-                        if ($this->display_error) {
-                            throw new RpcException($result);
-                        } else {
-                            $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
-                        }
-                    }
-                    $this->result[$key] = $result;
+                    $this->formatCallback($callInfo, $data, 2);
                 }
             },
             //失败的回调函数
             function ($type, $error, $callInfo) {
-                $urlItem = $this->urls[$callInfo['sequence'] - 1];
-                $key = $urlItem['key'];
-                $error = str_replace('malformed response header ', '', $error);
-                $result = $this->formatResponse(!is_string($error) ? json_encode($error) : $error, (int)$type, $key);
-                $this->logData[md5($urlItem['key'])]['use_time'] = microtime(true) - $this->request_time;
-                $this->logData[md5($urlItem['key'])]['result'] = $result;
-                if (!is_array($result)) {
-                    if ($this->display_error) {
-                        throw new RpcException($result);
-                    } else {
-                        $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
-                    }
-                }
-                $this->result[$key] = $result;
+                $this->formatCallback($callInfo, $error, intval($type));
             }
         );
         if (!$status) {
             $error = error_get_last();
             if (strpos($error['message'], 'select timeout')) {
-                $errorMsg = '连接服务失败';
+                $errorMsg = ($this->params['timeout'] / 1000) < (microtime(true) - $this->request_time) ? '服务响应超时' : '连接服务失败';
             } else {
                 $errorMsg = $error['message'];
             }
             foreach ($this->urls as $url) {
                 if (!isset($this->result[$url['key']])) {
+                    $logKey = md5('key' . $url['key']);
                     $this->result[$url['key']] = [$this->error_code_key => 500, $this->error_msg_key => $errorMsg];
-                    $this->logData[md5($url['key'])]['use_time'] = microtime(true) - $this->request_time;
-                    $this->logData[md5($url['key'])]['result'] = $errorMsg;
+                    $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
+                    $this->logData[$logKey]['result'] = $errorMsg;
                 }
             }
         }
         return ['status' => 1, 'msg' => '获取成功', 'data' => $this->result];
+    }
+
+    /**
+     * 格式化响应结果
+     *
+     * @author xyq
+     * @param $callInfo
+     * @param $data
+     * @param null $type
+     * @throws RpcException
+     */
+    private function formatCallback($callInfo, $data, $type)
+    {
+        $urlItem = $this->urls[$callInfo['sequence'] - 1];
+        $key = $urlItem['key'];
+        if (2 !== $type) {
+            $data = str_replace('malformed response header ', '', $data);
+            if (!is_string($data)) {
+                $data = json_encode($data);
+            }
+            $type = intval($type);
+        }
+        $result = $this->formatResponse($data, $type, $key);
+        $logKey = md5('key' . $urlItem['key']);
+        $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
+        $this->logData[$logKey]['result'] = $result;
+        if (!is_array($result)) {
+            if ($this->display_error) {
+                throw new RpcException($result);
+            } else {
+                $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+            }
+        }
+        $this->result[$key] = $result;
     }
 }
