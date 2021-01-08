@@ -13,6 +13,7 @@ namespace xyqWeb\rpc\drivers;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use function GuzzleHttp\Promise\unwrap;
+use GuzzleHttp\TransferStats;
 use Psr\Http\Message\ResponseInterface;
 use xyqWeb\rpc\strategy\RpcException;
 
@@ -141,6 +142,9 @@ class Http extends RpcStrategy
                     'params'       => $options['json'] ?? [],
                     'request_time' => $this->request_time,
                 ];
+                $options['on_stats'] = function (TransferStats $stats) use ($realUrl) {
+                    $this->logData[md5($realUrl)]['use_time'] = $stats->getTransferTime();
+                };
                 $promises[$key] = $this->client->requestAsync($method, $realUrl, $options);
             }
             $this->result = unwrap($promises);
