@@ -128,13 +128,12 @@ class Http extends RpcStrategy
                 } else {
                     $options['json'] = $url['params'];
                 }
-                $this->requireKey = md5($realUrl);
                 $needProxy = $this->needProxy($isIndependent, $realUrl);
                 if ($needProxy && !empty($this->proxy)) {
                     $options['proxy'] = $this->proxy;
                 }
                 $options['headers'] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : []);
-                $this->logData[$this->requireKey] = [
+                $this->logData[$key] = [
                     'url'          => $realUrl,
                     'method'       => $method,
                     'proxy'        => $options['proxy'] ?? [],
@@ -142,8 +141,8 @@ class Http extends RpcStrategy
                     'params'       => $options['json'] ?? [],
                     'request_time' => $this->request_time,
                 ];
-                $options['on_stats'] = function (TransferStats $stats) use ($realUrl) {
-                    $this->logData[md5($realUrl)]['use_time'] = $stats->getTransferTime();
+                $options['on_stats'] = function (TransferStats $stats) use ($key) {
+                    $this->logData[$key]['use_time'] = $stats->getTransferTime();
                 };
                 $promises[$key] = $this->client->requestAsync($method, $realUrl, $options);
             }
@@ -267,8 +266,7 @@ class Http extends RpcStrategy
             } else {
                 $result = $item;
             }
-            $this->logData[$this->requireKey]['use_time'] = microtime(true) - $this->request_time;
-            $this->logData[$this->requireKey]['result'] = $result;
+            $this->logData[$key]['result'] = $result;
             if (!is_array($result)) {
                 if ($this->display_error) {
                     throw new RpcException($result, 500);
