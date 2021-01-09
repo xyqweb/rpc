@@ -83,6 +83,7 @@ class Yar extends RpcStrategy
                 'header'       => $header,
                 'params'       => $url['params'],
                 'request_time' => $this->request_time,
+                'method'       => $url['method'],
             ];
             \Yar_Concurrent_Client::call($realUrl, $url['method'], isset($url['params']) ? ['params' => $url['params']] : null, null, null, $header);
         }
