@@ -92,7 +92,7 @@ class Request
      *
      * @author xyq
      * @return array
-     * @throws \Exception
+     * @throws RpcException
      */
     public function get() : array
     {

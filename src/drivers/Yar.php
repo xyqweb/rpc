@@ -33,6 +33,7 @@ class Yar extends RpcStrategy
     public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = [])
     {
         $this->request_time = microtime(true);
+        $this->isMulti = false;
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $realUrl = $this->getRealUrl($url, $isIndependent);
         $headers = $this->getHeaders($token, $headers, ':');
@@ -41,7 +42,6 @@ class Yar extends RpcStrategy
         $this->client->SetOpt(YAR_OPT_HEADER, $headers);
         $this->client->SetOpt(YAR_OPT_PACKAGER, $this->params['yarPackageType']);
         $this->client->SetOpt(YAR_OPT_TIMEOUT, $this->params['timeout']);
-        $this->isMulti = false;
         $this->requireKey = md5($realUrl);
         $this->logData[$this->requireKey] = [
             'url'          => $realUrl,
@@ -64,8 +64,7 @@ class Yar extends RpcStrategy
     public function setMultiParams(array $urls, $token = null)
     {
         \Yar_Concurrent_Client::reset();
-        $this->result = null;
-        $this->urls = null;
+        $this->result = $this->urls = null;
         $this->isMulti = true;
         $this->request_time = microtime(true);
         $header = [

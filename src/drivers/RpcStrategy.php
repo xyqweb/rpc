@@ -80,6 +80,12 @@ abstract class RpcStrategy
      * @var string 错误消息内容键值
      */
     protected $error_msg_key = 'msg';
+
+    /**
+     * @var int 成功响应code_key对应的值
+     */
+    protected $response_success_value = 1;
+
     /**
      * @var int 请求发起时间
      */
@@ -125,6 +131,9 @@ abstract class RpcStrategy
         }
         if (isset($params['error_msg_key']) && is_string($params['error_msg_key'])) {
             $this->error_msg_key = $params['error_msg_key'];
+        }
+        if (isset($params['response_success_value']) && is_int($params['response_success_value'])) {
+            $this->response_success_value = $params['response_success_value'];
         }
         $this->params = $params;
     }
@@ -352,18 +361,15 @@ abstract class RpcStrategy
                 return null;
             }
             foreach ($this->logData as $key => $item) {
+                $level = isset($item['result']) && is_array($item['result']) && isset($item['result'][$this->error_code_key]) && $this->response_success_value === $item['result'][$this->error_code_key] ? 'info' : 'error';
                 //不记录info级别
-                if (!in_array('info', $this->logLevel)) {
-                    if (isset($item['result']) && is_array($item['result'])) {
-                        continue;
-                    }
-                } elseif (!in_array('error', $this->logLevel)) {//不记录error级别
-                    if (!isset($item['result']) || !is_array($item['result'])) {
-                        continue;
-                    }
+                if (!in_array('info', $this->logLevel) && 'info' === $level) {
+                    continue;
+                } elseif (!in_array('error', $this->logLevel) && 'error' === $level) {//不记录error级别
+                    continue;
                 }
                 //当成功时且使用时间小于规定值
-                if (isset($item['result']) && is_array($item['result']) && isset($item['use_time']) && $this->infoMinTime > $item['use_time']) {
+                if ('info' === $level && isset($item['use_time']) && $this->infoMinTime > $item['use_time']) {
                     continue;
                 }
                 $finalLog[] = $item;
