@@ -128,7 +128,7 @@ class Yar extends RpcStrategy
             if ($this->display_error) {
                 throw new RpcException($result, 500);
             } else {
-                $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
             }
         }
         return $result;
@@ -209,7 +209,7 @@ class Yar extends RpcStrategy
             foreach ($this->urls as $url) {
                 if (!isset($this->result[$url['key']])) {
                     $logKey = md5('key' . $url['key']);
-                    $this->result[$url['key']] = [$this->error_code_key => 500, $this->error_msg_key => $errorMsg];
+                    $this->result[$url['key']] = [$this->error_code_key => 0, $this->error_msg_key => $errorMsg];
                     $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
                     $this->logData[$logKey]['result'] = $errorMsg;
                 }
@@ -246,7 +246,7 @@ class Yar extends RpcStrategy
             if ($this->display_error) {
                 throw new RpcException($result);
             } else {
-                $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
             }
         }
         $this->result[$key] = $result;

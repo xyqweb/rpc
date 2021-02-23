@@ -204,7 +204,7 @@ class Http extends RpcStrategy
             if ($this->display_error) {
                 throw new RpcException($result, 500);
             } else {
-                $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
             }
         }
         return $result;
@@ -271,7 +271,7 @@ class Http extends RpcStrategy
                 if ($this->display_error) {
                     throw new RpcException($result, 500);
                 } else {
-                    $result = [$this->error_code_key => 500, $this->error_msg_key => $result];
+                    $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
                 }
             }
             $finalResult[$key] = $result;
