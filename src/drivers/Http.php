@@ -12,9 +12,7 @@ namespace xyqWeb\rpc\drivers;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use function GuzzleHttp\Promise\unwrap;
 use GuzzleHttp\TransferStats;
-use Psr\Http\Message\ResponseInterface;
 use xyqWeb\rpc\strategy\RpcException;
 
 class Http extends RpcStrategy
@@ -111,7 +109,7 @@ class Http extends RpcStrategy
         $this->request_time = microtime(true);
         $this->result = null;
         $this->isMulti = true;
-        $options = [];
+        $options = ['http_errors' => false];
         $promises = [];
         $key = null;
         try {
@@ -146,7 +144,7 @@ class Http extends RpcStrategy
                 };
                 $promises[$key] = $this->client->requestAsync($method, $realUrl, $options);
             }
-            $this->result = unwrap($promises);
+            $this->result = $promises;
         } catch (\Exception $e) {
             $this->result[$key] = $e;
         }
@@ -171,7 +169,8 @@ class Http extends RpcStrategy
             }
             $method = strtoupper($method);
             $options = [
-                'headers' => $this->headers,
+                'headers'     => $this->headers,
+                'http_errors' => false,
             ];
             $needProxy = $this->needProxy($this->isIndependent, $this->url);
             if ($needProxy && !empty($this->proxy)) {
@@ -254,27 +253,35 @@ class Http extends RpcStrategy
      */
     public function multiGet() : array
     {
-        $finalResult = [];
-        foreach ($this->result as $key => $item) {
-            if ($item instanceof ResponseInterface) {
-                $responseCode = $item->getStatusCode();
-                $result = $this->formatResponse($item->getBody()->getContents(), (int)$responseCode);
-            } elseif ($item instanceof \Exception) {
-                $errCode = (int)$item->getCode();
-                $errMsg = $this->formatResponse($item->getMessage(), $errCode);
-                $result = $errMsg;
+        $requestResult = [];
+        foreach ($this->result as $key => $promise) {
+            if ($promise instanceof \Exception) {
+                $errCode = (int)$promise->getCode();
+                $errMsg = $this->formatResponse($promise->getMessage(), $errCode);
+                $responseData = $errMsg;
             } else {
-                $result = $item;
-            }
-            $this->logData[$key]['result'] = $result;
-            if (!is_array($result)) {
-                if ($this->display_error) {
-                    throw new RpcException($result, 500);
-                } else {
-                    $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
+                try {
+                    $response = $promise->wait();
+                    $responseCode = (int)$response->getStatusCode();
+                    $responseData = $this->formatResponse($response->getBody()->getContents(), $responseCode);
+                } catch (\Exception $e) {
+                    $errCode = (int)$e->getCode();
+                    $errMsg = $this->formatResponse($e->getMessage(), $errCode);
+                    $responseData = $errMsg;
                 }
             }
-            $finalResult[$key] = $result;
+            $this->logData[$key]['result'] = $requestResult[$key] = $responseData;
+        }
+        $finalResult = [];
+        foreach ($requestResult as $key => $item) {
+            if (!is_array($item)) {
+                if ($this->display_error) {
+                    throw new RpcException($item, 500);
+                } else {
+                    $item = [$this->error_code_key => 0, $this->error_msg_key => $item];
+                }
+            }
+            $finalResult[$key] = $item;
         }
         return ['status' => 1, 'msg' => '获取成功', 'data' => $finalResult];
     }
