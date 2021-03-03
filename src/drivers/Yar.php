@@ -41,7 +41,12 @@ class Yar extends RpcStrategy
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
         $this->client->SetOpt(YAR_OPT_HEADER, $headers);
         $this->client->SetOpt(YAR_OPT_PACKAGER, $this->params['yarPackageType']);
-        $this->client->SetOpt(YAR_OPT_TIMEOUT, $this->params['timeout']);
+        if (isset($this->params['timeout']) && is_int($this->params['timeout'])) {
+            ini_set('yar.timeout', (string)$this->params['timeout']);
+        }
+        if (isset($this->params['connect_timeout']) && is_int($this->params['connect_timeout'])) {
+            ini_set('yar.connect_timeout', (string)$this->params['connect_timeout']);
+        }
         $this->requireKey = md5($realUrl);
         $this->logData[$this->requireKey] = [
             'url'          => $realUrl,
@@ -70,8 +75,13 @@ class Yar extends RpcStrategy
         $header = [
             YAR_OPT_PERSISTENT => true,
             YAR_OPT_PACKAGER   => $this->params['yarPackageType'],
-            YAR_OPT_TIMEOUT    => $this->params['timeout'],
         ];
+        if (isset($this->params['timeout']) && is_int($this->params['timeout'])) {
+            ini_set('yar.timeout', (string)$this->params['timeout']);
+        }
+        if (isset($this->params['connect_timeout']) && is_int($this->params['connect_timeout'])) {
+            ini_set('yar.connect_timeout', (string)$this->params['connect_timeout']);
+        }
         $urls = array_values($urls);
         foreach ($urls as $key => $url) {
             $urlKey = $url['key'];

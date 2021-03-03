@@ -114,37 +114,38 @@ abstract class RpcStrategy
             unset($params['intranetAddress']);
         }
         if (isset($params['log'])) {
-            if (isset($params['log']['file']) && !empty($params['log']['file'])) {
-                $this->logName = $params['log']['file'];
-            }
-            if (isset($params['log']['driver']) && method_exists($params['log']['driver'], 'write')) {
+            if (is_array($params['log']) && isset($params['log']['driver']) && method_exists($params['log']['driver'], 'write')) {
                 $this->logDriver = $params['log']['driver'];
-            }
-            if (isset($params['log']['levels']) && is_array($params['log']['levels']) && !empty($params['log']['levels'])) {
-                $this->logLevel = $params['log']['levels'];
-            }
-            if (isset($params['log']['infoMinTime']) && is_int($params['log']['infoMinTime'])) {
-                $this->infoMinTime = $params['log']['infoMinTime'];
+                if (isset($params['log']['file']) && !empty($params['log']['file'])) {
+                    $this->logName = $params['log']['file'];
+                }
+                if (isset($params['log']['levels']) && is_array($params['log']['levels']) && !empty($params['log']['levels'])) {
+                    $this->logLevel = $params['log']['levels'];
+                }
+                if (isset($params['log']['infoMinTime']) && is_int($params['log']['infoMinTime'])) {
+                    $this->infoMinTime = $params['log']['infoMinTime'];
+                }
             }
             unset($params['log']);
         }
-        if (isset($params['error']) && !is_array($params['error'])) {
-            if (isset($params['display_error']) && is_bool($params['display_error'])) {
-                $this->display_error = $params['display_error'];
+        if (isset($params['error']) && is_array($params['error'])) {
+            $error = $params['error'];
+            if (isset($error['display_error']) && is_bool($error['display_error'])) {
+                $this->display_error = $error['display_error'];
             }
-            if (isset($params['code_key']) && is_string($params['code_key'])) {
-                $this->code_key = $params['code_key'];
+            if (isset($error['code_key']) && is_string($error['code_key'])) {
+                $this->code_key = $error['code_key'];
             }
-            if (isset($params['msg_key']) && is_string($params['msg_key'])) {
-                $this->msg_key = $params['msg_key'];
+            if (isset($error['msg_key']) && is_string($error['msg_key'])) {
+                $this->msg_key = $error['msg_key'];
             }
-            if (isset($params['success_code'])) {
-                $this->response_success_code = is_array($params['success_code']) && !empty($params['success_code']) ? $params['success_code'] : (is_int($params['success_code']) ? [$params['success_code']] : [1]);
+            if (isset($error['success_code'])) {
+                $this->response_success_code = is_array($error['success_code']) && !empty($error['success_code']) ? $error['success_code'] : (is_int($error['success_code']) ? [$error['success_code']] : [1]);
             }
-            if (isset($params['fail_code'])) {
-                $this->response_fail_code = is_array($params['fail_code']) && !empty($params['fail_code']) ? $params['fail_code'] : (is_int($params['fail_code']) ? [$params['fail_code']] : [0]);
+            if (isset($error['fail_code'])) {
+                $this->response_fail_code = is_array($error['fail_code']) && !empty($error['fail_code']) ? $error['fail_code'] : (is_int($error['fail_code']) ? [$error['fail_code']] : [0]);
             }
-            unset($params['error']);
+            unset($params['error'], $error);
         } else {
             if (isset($params['display_error']) && is_bool($params['display_error'])) {
                 $this->display_error = $params['display_error'];
