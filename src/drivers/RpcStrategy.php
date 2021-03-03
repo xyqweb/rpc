@@ -72,19 +72,24 @@ abstract class RpcStrategy
     protected $display_error = true;
 
     /**
-     * @var string 错误状态码的键值
+     * @var string 状态码的键值
      */
-    protected $error_code_key = 'status';
+    protected $code_key = 'status';
 
     /**
-     * @var string 错误消息内容键值
+     * @var string 消息内容键值
      */
-    protected $error_msg_key = 'msg';
+    protected $msg_key = 'msg';
 
     /**
-     * @var int 成功响应code_key对应的值
+     * @var array 成功响应code_key对应的值
      */
-    protected $response_success_value = 1;
+    protected $response_success_code = [1];
+
+    /**
+     * @var array 成功响应code_key对应的值
+     */
+    protected $response_fail_code = [0];
 
     /**
      * @var int 请求发起时间
@@ -123,17 +128,36 @@ abstract class RpcStrategy
             }
             unset($params['log']);
         }
-        if (isset($params['display_error']) && is_bool($params['display_error'])) {
-            $this->display_error = $params['display_error'];
-        }
-        if (isset($params['error_code_key']) && is_string($params['error_code_key'])) {
-            $this->error_code_key = $params['error_code_key'];
-        }
-        if (isset($params['error_msg_key']) && is_string($params['error_msg_key'])) {
-            $this->error_msg_key = $params['error_msg_key'];
-        }
-        if (isset($params['response_success_value']) && is_int($params['response_success_value'])) {
-            $this->response_success_value = $params['response_success_value'];
+        if (isset($params['error']) && !is_array($params['error'])) {
+            if (isset($params['display_error']) && is_bool($params['display_error'])) {
+                $this->display_error = $params['display_error'];
+            }
+            if (isset($params['code_key']) && is_string($params['code_key'])) {
+                $this->code_key = $params['code_key'];
+            }
+            if (isset($params['msg_key']) && is_string($params['msg_key'])) {
+                $this->msg_key = $params['msg_key'];
+            }
+            if (isset($params['success_code'])) {
+                $this->response_success_code = is_array($params['success_code']) && !empty($params['success_code']) ? $params['success_code'] : (is_int($params['success_code']) ? [$params['success_code']] : [1]);
+            }
+            if (isset($params['fail_code'])) {
+                $this->response_fail_code = is_array($params['fail_code']) && !empty($params['fail_code']) ? $params['fail_code'] : (is_int($params['fail_code']) ? [$params['fail_code']] : [0]);
+            }
+            unset($params['error']);
+        } else {
+            if (isset($params['display_error']) && is_bool($params['display_error'])) {
+                $this->display_error = $params['display_error'];
+            }
+            if (isset($params['code_key']) && is_string($params['code_key'])) {
+                $this->code_key = $params['code_key'];
+            }
+            if (isset($params['msg_key']) && is_string($params['msg_key'])) {
+                $this->msg_key = $params['msg_key'];
+            }
+            if (isset($params['success_code']) && is_int($params['success_code'])) {
+                $this->response_success_code = [$params['success_code']];
+            }
         }
         $this->params = $params;
     }
@@ -361,11 +385,23 @@ abstract class RpcStrategy
                 return null;
             }
             foreach ($this->logData as $key => $item) {
-                $level = isset($item['result']) && is_array($item['result']) && isset($item['result'][$this->error_code_key]) && $this->response_success_value === $item['result'][$this->error_code_key] ? 'info' : 'error';
+                if (isset($item['result']) && is_array($item['result']) && isset($item['result'][$this->code_key])) {
+                    if (in_array($item['result'][$this->code_key], $this->response_success_code)) {
+                        $level = 'info';
+                    } elseif (in_array($item['result'][$this->code_key], $this->response_fail_code)) {
+                        $level = 'error';
+                    } else {
+                        $level = 'debug';
+                    }
+                } else {
+                    $level = 'error';
+                }
                 //不记录info级别
                 if (!in_array('info', $this->logLevel) && 'info' === $level) {
                     continue;
                 } elseif (!in_array('error', $this->logLevel) && 'error' === $level) {//不记录error级别
+                    continue;
+                } elseif (!in_array('debug', $this->logLevel) && 'debug' === $level) {
                     continue;
                 }
                 //当成功时且使用时间小于规定值

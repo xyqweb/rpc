@@ -74,17 +74,23 @@ class Yar extends RpcStrategy
         ];
         $urls = array_values($urls);
         foreach ($urls as $key => $url) {
+            $urlKey = $url['key'];
             $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
             $header[YAR_OPT_HEADER] = $this->getHeaders($token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [], ':');
             $realUrl = $this->getRealUrl($url['url'], $isIndependent);
-            $this->logData[md5('key' . $url['key'])] = [
+            $this->logData[md5('key' . $urlKey)] = [
                 'url'          => $realUrl,
                 'header'       => $header,
                 'params'       => $url['params'],
                 'request_time' => $this->request_time,
                 'method'       => $url['method'],
             ];
-            \Yar_Concurrent_Client::call($realUrl, $url['method'], isset($url['params']) ? ['params' => $url['params']] : null, null, null, $header);
+            \Yar_Concurrent_Client::call($realUrl, $url['method'], isset($url['params']) ? ['params' => $url['params']] : null,
+                function ($data) use ($urlKey) {
+                    $this->formatCallback($data, 2, $urlKey);
+                }, function ($type, $error) use ($urlKey) {
+                    $this->formatCallback($error, intval($type), $urlKey);
+                }, $header);
         }
         $this->urls = $urls;
         return $this;
@@ -114,12 +120,12 @@ class Yar extends RpcStrategy
                 $result = $this->formatResponse($result);
             }
         } catch (\Exception $e) {
-        } catch (\TypeError $e) {
         } catch (\Throwable $e) {
         }
         if (is_object($e)) {
             $msg = str_replace('malformed response header ', '', $e->getMessage());
             $result = $this->formatResponse($msg, (int)$e->getCode());
+            $this->logData[$this->requireKey]['origin_response'] = $e->getMessage();
             unset($e);
         }
         $this->logData[$this->requireKey]['use_time'] = microtime(true) - $this->request_time;
@@ -128,7 +134,7 @@ class Yar extends RpcStrategy
             if ($this->display_error) {
                 throw new RpcException($result, 500);
             } else {
-                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
+                $result = [$this->code_key => 0, $this->msg_key => $result];
             }
         }
         return $result;
@@ -160,9 +166,9 @@ class Yar extends RpcStrategy
             } elseif (500 == $finalMsg) {
                 $msg = '服务内部错误';
             } else {
-                $msg = '服务异常：' . $finalMsg;
+                $msg = '服务异常-' . $finalMsg;
             }
-            $exceptionMsg = empty($key) ? '' : "键值{$key}：";
+            $exceptionMsg = empty($key) ? '' : "键值{$key}:";
             if (is_int(strpos($msg, 'Timeout was reached'))) {
                 $msg = '服务响应超时';
             } elseif (is_int(strpos($msg, "Couldn't connect to server"))) {
@@ -170,9 +176,17 @@ class Yar extends RpcStrategy
             }
             $exceptionMsg .= $msg;
 
+        } elseif (64 == $code) {
+            $exceptionMsg = empty($key) ? '' : "键值{$key}：";
+            $temp = json_decode($msg, true);
+            if (is_array($temp) && isset($temp['message'])) {
+                $exceptionMsg .= '服务异常：' . $temp['message'];
+            } else {
+                $exceptionMsg .= '服务异常-' . $msg;
+            }
         } else {
             $exceptionMsg = empty($key) ? '' : "键值{$key}：";
-            $exceptionMsg .= '服务异常：' . $msg;
+            $exceptionMsg .= '服务异常-' . $msg;
 
         }
         return $exceptionMsg;
@@ -187,18 +201,7 @@ class Yar extends RpcStrategy
      */
     public function multiGet() : array
     {
-        $status = @\Yar_Concurrent_Client::loop(
-        //成功的回调函数zz
-            function ($data, $callInfo) {
-                if ($callInfo != NULL) {
-                    $this->formatCallback($callInfo, $data, 2);
-                }
-            },
-            //失败的回调函数
-            function ($type, $error, $callInfo) {
-                $this->formatCallback($callInfo, $error, intval($type));
-            }
-        );
+        $status = @\Yar_Concurrent_Client::loop();
         if (!$status) {
             $error = error_get_last();
             if (strpos($error['message'], 'select timeout')) {
@@ -209,9 +212,17 @@ class Yar extends RpcStrategy
             foreach ($this->urls as $url) {
                 if (!isset($this->result[$url['key']])) {
                     $logKey = md5('key' . $url['key']);
-                    $this->result[$url['key']] = [$this->error_code_key => 0, $this->error_msg_key => $errorMsg];
+                    $this->result[$url['key']] = $this->display_error ? $errorMsg : [$this->code_key => 0, $this->msg_key => $errorMsg];
                     $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
+                    $this->logData[$logKey]['origin_response'] = $error['message'];
                     $this->logData[$logKey]['result'] = $errorMsg;
+                }
+            }
+        }
+        if ($this->display_error) {
+            foreach ($this->result as $item) {
+                if (!is_array($item)) {
+                    throw new RpcException($item['msg'], 500);
                 }
             }
         }
@@ -222,31 +233,23 @@ class Yar extends RpcStrategy
      * 格式化响应结果
      *
      * @author xyq
-     * @param $callInfo
      * @param $data
-     * @param null $type
-     * @throws RpcException
+     * @param int $type
+     * @param int|string $key
      */
-    private function formatCallback($callInfo, $data, $type)
+    private function formatCallback($data, int $type, $key)
     {
-        $urlItem = $this->urls[$callInfo['sequence'] - 1];
-        $key = $urlItem['key'];
-        if (2 !== $type) {
-            $data = str_replace('malformed response header ', '', $data);
-            if (!is_string($data)) {
-                $data = json_encode($data);
-            }
-            $type = intval($type);
+        if (!is_string($data)) {
+            $data = json_encode($data);
         }
         $result = $this->formatResponse($data, $type, $key);
-        $logKey = md5('key' . $urlItem['key']);
+        $logKey = md5('key' . $key);
         $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
         $this->logData[$logKey]['result'] = $result;
         if (!is_array($result)) {
-            if ($this->display_error) {
-                throw new RpcException($result);
-            } else {
-                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
+            $this->logData[$logKey]['origin_response'] = $data;
+            if (!$this->display_error) {
+                $result = [$this->code_key => 0, $this->msg_key => $result];
             }
         }
         $this->result[$key] = $result;

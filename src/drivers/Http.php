@@ -190,7 +190,6 @@ class Http extends RpcStrategy
             $result = $this->formatResponse($result->getBody()->getContents(), (int)$responseCode);
         } catch (GuzzleException $e) {
         } catch (\Exception $e) {
-        } catch (\TypeError $e) {
         } catch (\Throwable $e) {
         }
         if (is_object($e)) {
@@ -203,7 +202,7 @@ class Http extends RpcStrategy
             if ($this->display_error) {
                 throw new RpcException($result, 500);
             } else {
-                $result = [$this->error_code_key => 0, $this->error_msg_key => $result];
+                $result = [$this->code_key => 0, $this->msg_key => $result];
             }
         }
         return $result;
@@ -228,19 +227,22 @@ class Http extends RpcStrategy
                 return $exceptionMsg;
             }
             return $result;
-        } elseif ($code == 404) {
-            $exceptionMsg .= "服务URL地址不存在";
-        } elseif ($code == 500) {
-            $exceptionMsg .= '服务内部错误';
         } else {
-            $temp = current(explode(':', $msg));
-            preg_match('/\d+/', $temp, $arr);
-            if (!empty($arr)) {
-                $exceptionMsg .= '服务异常：' . $this->getMessage(intval($arr[0]));
+            $httpMsg = $this->getHttpMsg($code);
+            if (empty($httpMsg)) {
+                $temp = current(explode(':', $msg));
+                preg_match('/\d+/', $temp, $arr);
+                if (!empty($arr)) {
+                    $exceptionMsg .= '服务异常-' . $this->getMessage(intval($arr[0]));
+                } else {
+                    $exceptionMsg .= '服务异常-' . $msg;
+                }
+                unset($temp, $arr);
             } else {
-                $exceptionMsg .= '服务异常：' . $msg;
+                $exceptionMsg .= '服务异常-' . $httpMsg;
             }
         }
+        unset($msg, $code, $key, $httpMsg);
         return $exceptionMsg;
     }
 
@@ -278,7 +280,7 @@ class Http extends RpcStrategy
                 if ($this->display_error) {
                     throw new RpcException($item, 500);
                 } else {
-                    $item = [$this->error_code_key => 0, $this->error_msg_key => $item];
+                    $item = [$this->code_key => 0, $this->msg_key => $item];
                 }
             }
             $finalResult[$key] = $item;
@@ -374,6 +376,64 @@ class Http extends RpcStrategy
             return $array[$code];
         } else {
             return '未知错误类型';
+        }
+    }
+
+    /**
+     * 获取http错误信息
+     *
+     * @author xyq
+     * @param int $code
+     * @return mixed|string
+     */
+    public function getHttpMsg(int $code)
+    {
+        $array = [
+            100 => '客户端应继续其请求',
+            101 => '协议错误，请切换到更高级的协议',
+            200 => '请求成功',
+            201 => '成功请求并创建了新的资源',
+            202 => '已经接受请求，但未处理完成',
+            203 => '非授权信息',
+            204 => '无内容',
+            205 => '重置内容',
+            206 => '部分内容。服务器成功处理了部分GET请求',
+            300 => '多种选择。请求的资源可包括多个位置，相应可返回一个资源特征与地址的列表用于用户终端（例如：浏览器）选择',
+            301 => 'URI地址永久重定向',
+            302 => 'URI地址临时重定向',
+            303 => '查看其它地址',
+            304 => '请求的资源未修改',
+            305 => '请求的资源必须通过代理访问',
+            307 => '请求的资源临时从不同的URI 响应请求',
+            400 => '客户端请求的语法错误，服务器无法理解',
+            401 => '请求要求用户的身份认证',
+            403 => '拒绝访问',
+            404 => '服务地址不存在',
+            405 => '请求中方法禁止访问',
+            406 => '服务器无法根据客户端请求的内容特性完成请求',
+            407 => '请求要求代理的身份认证',
+            408 => '服务器等待客户端发送的请求时间过长，超时',
+            409 => '服务器处理请求时发生了冲突',
+            410 => '客户端请求的资源已经不存在',
+            411 => '服务器无法处理客户端发送的不带Content-Length的请求信息',
+            412 => '客户端请求信息的先决条件错误',
+            413 => '请求的实体过大，服务器无法处理',
+            414 => '请求的URI过长',
+            415 => '服务器无法处理请求附带的媒体格式',
+            416 => '客户端请求的范围无效',
+            417 => '服务器无法满足Expect的请求头信息',
+            499 => '客户端关闭连接',
+            500 => '服务器内部错误',
+            501 => '服务器不支持请求的功能',
+            502 => '无法连接upstream服务',
+            503 => '服务超载，请稍后再试',
+            504 => 'upstream响应超时',
+            505 => '服务器不支持请求的HTTP协议的版本',
+        ];
+        if (array_key_exists($code, $array)) {
+            return $array[$code];
+        } else {
+            return '';
         }
     }
 }

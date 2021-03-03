@@ -99,11 +99,7 @@ class Request
         $errMsg = $result = null;
         try {
             $result = $this->object->get();
-        } catch (RpcException $e) {
-            $errMsg = $e->getMessage();
         } catch (\Exception $e) {
-            $errMsg = $e->getMessage();
-        } catch (\TypeError $e) {
             $errMsg = $e->getMessage();
         } catch (\Throwable $e) {
             $errMsg = $e->getMessage();
@@ -113,5 +109,16 @@ class Request
             throw new RpcException($errMsg, 500, $errMsg);
         }
         return $result;
+    }
+
+    /**
+     * 释放RPC连接对象
+     *
+     * @author xyq
+     */
+    public function close()
+    {
+        $this->object = null;
+        self::$rpc = null;
     }
 }

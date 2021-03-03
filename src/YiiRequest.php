@@ -104,11 +104,7 @@ class YiiRequest extends Component
         $errMsg = $result = null;
         try {
             $result = $this->object->get();
-        } catch (RpcException $e) {
-            $errMsg = $e->getMessage();
         } catch (\Exception $e) {
-            $errMsg = $e->getMessage();
-        } catch (\TypeError $e) {
             $errMsg = $e->getMessage();
         } catch (\Throwable $e) {
             $errMsg = $e->getMessage();
