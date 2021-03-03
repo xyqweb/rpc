@@ -59,8 +59,8 @@ $config = [
             'display_error' => true,//Whether to throw an exception directly when a request error occurs
             'code_key'      => 'status',//response data status key
             'msg_key'       => 'msg',//response data msg key
-            'success_value' => [1],//response data success status value
-            'fail_value'    => [0]//response data fail status value
+            'success_code' => [1],//response data success status value
+            'fail_code'    => [0]//response data fail status value
         ],
     //    'proxy'          => [ //only work in http request and outer params is true
     //        'host' => 'proxy server ip',

@@ -146,19 +146,6 @@ abstract class RpcStrategy
                 $this->response_fail_code = is_array($error['fail_code']) && !empty($error['fail_code']) ? $error['fail_code'] : (is_int($error['fail_code']) ? [$error['fail_code']] : [0]);
             }
             unset($params['error'], $error);
-        } else {
-            if (isset($params['display_error']) && is_bool($params['display_error'])) {
-                $this->display_error = $params['display_error'];
-            }
-            if (isset($params['code_key']) && is_string($params['code_key'])) {
-                $this->code_key = $params['code_key'];
-            }
-            if (isset($params['msg_key']) && is_string($params['msg_key'])) {
-                $this->msg_key = $params['msg_key'];
-            }
-            if (isset($params['success_code']) && is_int($params['success_code'])) {
-                $this->response_success_code = [$params['success_code']];
-            }
         }
         $this->params = $params;
     }
