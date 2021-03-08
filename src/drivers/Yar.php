@@ -232,7 +232,7 @@ class Yar extends RpcStrategy
         if ($this->display_error) {
             foreach ($this->result as $item) {
                 if (!is_array($item)) {
-                    throw new RpcException($item['msg'], 500);
+                    throw new RpcException($item, 500);
                 }
             }
         }
