@@ -90,6 +90,7 @@ class Http extends RpcStrategy
             'url'          => $this->url,
             'headers'      => $this->headers,
             'request_time' => $this->request_time,
+            'request_uri'  => $this->getRequestUri(),
         ];
         return $this;
     }
@@ -112,6 +113,7 @@ class Http extends RpcStrategy
         $options = ['http_errors' => false];
         $promises = [];
         $key = null;
+        $request_uri = $this->getRequestUri();
         try {
             foreach ($urls as $url) {
                 $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
@@ -138,6 +140,7 @@ class Http extends RpcStrategy
                     'headers'      => $options['headers'],
                     'params'       => $options['json'] ?? [],
                     'request_time' => $this->request_time,
+                    'request_uri'  => $request_uri,
                 ];
                 $options['on_stats'] = function (TransferStats $stats) use ($key) {
                     $this->logData[$key]['use_time'] = $stats->getTransferTime();

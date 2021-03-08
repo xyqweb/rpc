@@ -410,4 +410,18 @@ abstract class RpcStrategy
         $this->logData = [];
         return $result;
     }
+
+    /**
+     * @return string
+     */
+    protected function getRequestUri() : string
+    {
+        $env = php_sapi_name();
+        if ('cli' == $env) {
+            $require_uri = json_encode($_SERVER['argv']??[]);
+        } else {
+            $require_uri = $_SERVER['REQUEST_URI'] ?? '';
+        }
+        return $require_uri;
+    }
 }

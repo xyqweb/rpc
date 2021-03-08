@@ -52,6 +52,7 @@ class Yar extends RpcStrategy
             'url'          => $realUrl,
             'header'       => $headers,
             'request_time' => $this->request_time,
+            'request_uri'  => $this->getRequestUri(),
         ];
         return $this;
     }
@@ -72,6 +73,7 @@ class Yar extends RpcStrategy
         $this->result = $this->urls = null;
         $this->isMulti = true;
         $this->request_time = microtime(true);
+        $request_uri = $this->getRequestUri();
         $header = [
             YAR_OPT_PERSISTENT => true,
             YAR_OPT_PACKAGER   => $this->params['yarPackageType'],
@@ -93,6 +95,7 @@ class Yar extends RpcStrategy
                 'header'       => $header,
                 'params'       => $url['params'],
                 'request_time' => $this->request_time,
+                'request_uri'  => $request_uri,
                 'method'       => $url['method'],
             ];
             \Yar_Concurrent_Client::call($realUrl, $url['method'], isset($url['params']) ? ['params' => $url['params']] : null,
