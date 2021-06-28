@@ -43,6 +43,9 @@ class Request
         if (isset($config['log']['driver']) && !empty($config['log']['driver']) && defined('APP_ENVIRONMENT') && extension_loaded('phalcon')) {
             $config['log']['driver'] = \Phalcon\DI::getDefault()->get($config['log']['driver']);
         }
+        if (isset($config['logs']['driver']) && !empty($config['logs']['driver']) && defined('APP_ENVIRONMENT') && extension_loaded('phalcon')) {
+            $config['logs']['driver'] = \Phalcon\DI::getDefault()->get($config['logs']['driver']);
+        }
         $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         self::$rpc = new $class($config);
     }

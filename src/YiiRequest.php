@@ -61,6 +61,9 @@ class YiiRequest extends Component
         if (isset($config['log']['driver']) && !empty($config['log']['driver'])) {
             $config['log']['driver'] = \Yii::$app->get($config['log']['driver']);
         }
+        if (isset($config['logs']['driver']) && !empty($config['logs']['driver'])) {
+            $config['logs']['driver'] = \Yii::$app->get($config['logs']['driver']);
+        }
         $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         $this->rpc = new $class($config);
     }
