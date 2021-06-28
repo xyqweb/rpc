@@ -113,21 +113,28 @@ abstract class RpcStrategy
             }
             unset($params['intranetAddress']);
         }
-        if (isset($params['log'])) {
-            if (is_array($params['log']) && isset($params['log']['driver']) && method_exists($params['log']['driver'], 'write')) {
-                $this->logDriver = $params['log']['driver'];
-                if (isset($params['log']['file']) && !empty($params['log']['file'])) {
-                    $this->logName = $params['log']['file'];
-                }
-                if (isset($params['log']['levels']) && is_array($params['log']['levels']) && !empty($params['log']['levels'])) {
-                    $this->logLevel = $params['log']['levels'];
-                }
-                if (isset($params['log']['infoMinTime']) && is_int($params['log']['infoMinTime'])) {
-                    $this->infoMinTime = $params['log']['infoMinTime'];
-                }
-            }
+        $logConfig = [];
+        if (isset($params['log']) && !empty($params['log'])) {
+            $logConfig = $params['log'];
             unset($params['log']);
         }
+        if (isset($params['logs']) && !empty($params['logs'])) {
+            $logConfig = $params['logs'];
+            unset($params['logs']);
+        }
+        if (is_array($logConfig) && isset($logConfig['driver']) && method_exists($logConfig['driver'], 'write')) {
+            $this->logDriver = $logConfig['driver'];
+            if (isset($logConfig['file']) && !empty($logConfig['file'])) {
+                $this->logName = $logConfig['file'];
+            }
+            if (isset($logConfig['levels']) && is_array($logConfig['levels']) && !empty($logConfig['levels'])) {
+                $this->logLevel = $logConfig['levels'];
+            }
+            if (isset($logConfig['infoMinTime']) && is_int($logConfig['infoMinTime'])) {
+                $this->infoMinTime = $logConfig['infoMinTime'];
+            }
+        }
+        unset($logConfig);
         if (isset($params['error']) && is_array($params['error'])) {
             $error = $params['error'];
             if (isset($error['display_error']) && is_bool($error['display_error'])) {

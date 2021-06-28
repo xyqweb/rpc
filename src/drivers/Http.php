@@ -138,7 +138,7 @@ class Http extends RpcStrategy
                     'method'       => $method,
                     'proxy'        => $options['proxy'] ?? [],
                     'headers'      => $options['headers'],
-                    'params'       => $options['json'] ?? [],
+                    'params'       => $url['params'] ?? [],
                     'request_time' => $this->request_time,
                     'request_uri'  => $request_uri,
                 ];
@@ -187,7 +187,7 @@ class Http extends RpcStrategy
             }
             $this->logData[$this->requireKey]['method'] = $method;
             $this->logData[$this->requireKey]['proxy'] = $options['proxy'] ?? [];
-            $this->logData[$this->requireKey]['params'] = $options['params'] ?? [];
+            $this->logData[$this->requireKey]['params'] = $data;
             $result = $this->client->request($method, $realUrl, $options);
             $responseCode = $result->getStatusCode();
             $result = $this->formatResponse($result->getBody()->getContents(), (int)$responseCode);
@@ -266,6 +266,7 @@ class Http extends RpcStrategy
                 $responseData = $errMsg;
             } else {
                 try {
+                    /** @var $promise \GuzzleHttp\Promise\PromiseInterface */
                     $response = $promise->wait();
                     $responseCode = (int)$response->getStatusCode();
                     $responseData = $this->formatResponse($response->getBody()->getContents(), $responseCode);
