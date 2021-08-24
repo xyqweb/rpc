@@ -20,7 +20,7 @@ class SerialRequest extends RequestFactory
      */
     protected function checkParams()
     {
-        foreach ($this->urlArray as $key => &$url) {
+        foreach ($this->urlArray as $key => $url) {
             if (!isset($url['url']) || empty($url['url'])) {
                 if (!isset($url['outer']) || false == $url['outer']) {
                     if (strpos($url['url'], '_') !== 0) {
@@ -31,10 +31,7 @@ class SerialRequest extends RequestFactory
             if (!isset($url['method']) || empty($url['method'])) {
                 throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式', 500);
             }
-            if (!isset($url['params'])) {
-                $url['params'] = null;
-            }
-            if (isset($url['callback']) && (empty($url['callback']) || !is_array($url['callback']))) {
+            if ((isset($url['callback']) || $key > 0) && (empty($url['callback']) || !is_array($url['callback']) || !isset($url['callback'][0]) || !is_object($url['callback'][0]) || !isset($url['callback'][1]) || empty($url['callback'][1]))) {
                 throw new RpcException('请正确设置第' . ($key + 1) . '个的回调参数', 500);
             }
         }
@@ -55,18 +52,20 @@ class SerialRequest extends RequestFactory
             if (!is_array($params)) {
                 throw new RpcException('在处理第' . ($key + 1) . '请求时回调参数错误');
             }
-            if (is_array($url['params'])) {
+            if (isset($url['params']) && is_array($url['params'])) {
                 $postParams = $url['params'];
                 foreach ($params as $index => $param) {
                     $postParams[$index] = $param;
                 }
-                unset($params);
+                $params = [];
             } else {
                 $postParams = $params;
             }
             $isIndependent = isset($url['outer']) && true == $url['outer'] ? true : false;
+            $headers = isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [];
+            $options = isset($url['options']) && is_array($url['options']) ? $url['options'] : [];
             $result = $this->rpc
-                ->setParams($url['url'], $isIndependent, $this->token, isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [])
+                ->setParams($url['url'], $isIndependent, $this->token, $headers, $options)
                 ->get($url['method'], $postParams);
             if (!isset($url['callback'])) {
                 if (isset($url['key'])) {
