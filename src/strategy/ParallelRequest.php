@@ -23,7 +23,7 @@ class ParallelRequest extends RequestFactory
         if (count($this->urlArray) == count($this->urlArray, COUNT_RECURSIVE)) {
             throw new RpcException('请调用串行类');
         }
-        foreach ($this->urlArray as $key => &$url) {
+        foreach ($this->urlArray as $key => $url) {
             if (!isset($url['url']) || empty($url['url'])) {
                 if (!isset($url['outer']) || false == $url['outer']) {
                     if (strpos($url['url'], '_') !== 0) {
@@ -33,9 +33,6 @@ class ParallelRequest extends RequestFactory
             }
             if (!isset($url['method']) || empty($url['method'])) {
                 throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式');
-            }
-            if (!isset($url['params'])) {
-                $url['params'] = null;
             }
             if (!isset($url['key']) || is_null($url['key'])) {
                 throw new RpcException('请设置第' . ($key + 1) . '个的返回键名');
@@ -51,6 +48,17 @@ class ParallelRequest extends RequestFactory
     protected function setMultiParams()
     {
         $this->rpc->setMultiParams($this->urlArray, $this->token);
+    }
+
+    /**
+     * 向RPC注入自定义options
+     *
+     * @author xyq
+     * @param array $options
+     */
+    public function setOptions(array $options)
+    {
+        $this->rpc->setOptions($options);
     }
 
     /**
