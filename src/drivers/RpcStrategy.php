@@ -29,6 +29,11 @@ abstract class RpcStrategy
     protected $params = [];
 
     /**
+     * @var array $options 自定义options参数
+     */
+    protected $options = [];
+
+    /**
      * @var bool
      */
     protected $isMulti = false;
@@ -97,6 +102,11 @@ abstract class RpcStrategy
     protected $request_time = 0;
 
     /**
+     * @var string 请求id
+     */
+    protected $request_id = '';
+
+    /**
      * RpcStrategy constructor.
      * @param array $params
      */
@@ -114,15 +124,11 @@ abstract class RpcStrategy
             unset($params['intranetAddress']);
         }
         $logConfig = [];
-        if (isset($params['log']) && !empty($params['log'])) {
-            $logConfig = $params['log'];
-            unset($params['log']);
-        }
-        if (isset($params['logs']) && !empty($params['logs'])) {
+        if (isset($params['logs'])) {
             $logConfig = $params['logs'];
             unset($params['logs']);
         }
-        if (is_array($logConfig) && isset($logConfig['driver']) && method_exists($logConfig['driver'], 'write')) {
+        if (is_array($logConfig) && !empty($logConfig) && isset($logConfig['driver']) && is_object($logConfig['driver']) && method_exists($logConfig['driver'], 'write')) {
             $this->logDriver = $logConfig['driver'];
             if (isset($logConfig['file']) && !empty($logConfig['file'])) {
                 $this->logName = $logConfig['file'];
@@ -158,6 +164,47 @@ abstract class RpcStrategy
     }
 
     /**
+     * 设置自定义options
+     *
+     * @author xyq
+     * @param array $options 自定义options参数
+     */
+    public function setOptions(array $options)
+    {
+        $this->options = $options;
+    }
+
+    /**
+     * 获取最终的超时时间
+     *
+     * @author xyq
+     * @param bool $milliseconds
+     * @return array
+     */
+    protected function getTimeout(bool $milliseconds = true)
+    {
+        $timeout = isset($this->params['timeout']) && is_int($this->params['timeout']) ? $this->params['timeout'] : null;
+        $optionTimeout = isset($this->options['timeout']) && is_int($this->options['timeout']) ? $this->options['timeout'] : null;
+        if (is_int($timeout)) {
+            $timeout = is_int($optionTimeout) && $optionTimeout > $timeout ? $optionTimeout : $timeout;
+        } elseif (is_int($optionTimeout)) {
+            $timeout = $optionTimeout;
+        }
+        $connectTimeout = isset($this->params['connect_timeout']) && is_int($this->params['connect_timeout']) ? $this->params['connect_timeout'] : null;
+        $optionConnectTimeout = isset($this->options['connect_timeout']) && is_int($this->options['connect_timeout']) ? $this->options['connect_timeout'] : null;
+        if (is_int($connectTimeout)) {
+            $connectTimeout = is_int($optionConnectTimeout) && $optionConnectTimeout > $connectTimeout ? $optionConnectTimeout : $connectTimeout;
+        } elseif (is_int($optionConnectTimeout)) {
+            $connectTimeout = $optionConnectTimeout;
+        }
+        if ($milliseconds) {
+            return ['timeout' => $timeout, 'connect_timeout' => $connectTimeout];
+        } else {
+            return ['timeout' => $timeout / 1000, 'connect_timeout' => $connectTimeout / 1000];
+        }
+    }
+
+    /**
      * 设置串行请求参数
      *
      * @author xyq
@@ -165,9 +212,10 @@ abstract class RpcStrategy
      * @param bool $isIndependent 独立站点标识
      * @param array|string|null $token
      * @param array $headers 自定义headers
+     * @param array $options 自定义参数
      * @return mixed
      */
-    abstract public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = []);
+    abstract public function setParams(string $url, bool $isIndependent = false, $token = null, array $headers = [], array $options = []);
 
     /**
      * 获取串行请求结果
@@ -274,7 +322,7 @@ abstract class RpcStrategy
     {
         //请求的外部站点
         if ($isIndependent) {
-            return $url;
+            $realUrl = is_int(strpos($url, 'http://')) || is_int(strpos($url, 'https://')) ? $url : ('http://' . $url);
         } else {
             $url = explode('/', $url);
             $first = trim(array_shift($url), '_');
@@ -304,9 +352,9 @@ abstract class RpcStrategy
                     $realUrl .= $first . $this->params['rootDomain'] . implode('/', $url);
                 }
             }
-//            echo $realUrl."\n";
-            return $realUrl;
         }
+        $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query(['wr_id' => $this->request_id]);
+        return $realUrl;
     }
 
     /**
@@ -425,10 +473,21 @@ abstract class RpcStrategy
     {
         $env = php_sapi_name();
         if ('cli' == $env) {
-            $require_uri = json_encode($_SERVER['argv']??[]);
+            $require_uri = json_encode($_SERVER['argv'] ?? []);
         } else {
             $require_uri = $_SERVER['REQUEST_URI'] ?? '';
         }
         return $require_uri;
+    }
+
+    /**
+     * 设置请求ID
+     *
+     * @author xyq
+     * @param string $request_id
+     */
+    public function setRequestId(string $request_id)
+    {
+        $this->request_id = $request_id;
     }
 }
