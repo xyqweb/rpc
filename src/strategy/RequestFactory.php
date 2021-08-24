@@ -74,6 +74,17 @@ abstract class RequestFactory
     }
 
     /**
+     * 向RPC注入自定义options
+     *
+     * @author xyq
+     * @param array $options
+     */
+    public function setOptions(array $options)
+    {
+        $this->rpc->setOptions($options);
+    }
+
+    /**
      * 清理结果
      *
      * @author xyq
@@ -81,6 +92,7 @@ abstract class RequestFactory
     public function cleanResult()
     {
         $this->result = null;
+        $this->urlArray = [];
     }
 
     /**
@@ -92,6 +104,20 @@ abstract class RequestFactory
     public function saveLog()
     {
         return $this->rpc->saveLog();
+    }
+
+    /**
+     * 设置请求标识-uuid
+     *
+     * @author xyq
+     */
+    public function setRequestId()
+    {
+        $chars = md5(uniqid((string)mt_rand(), true));
+        $uuid = substr($chars, 0, 8) . '-'
+            . substr($chars, 8, 8) . '-'
+            . substr($chars, 20, 12);
+        $this->rpc->setRequestId($uuid);
     }
 
     /**
