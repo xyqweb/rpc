@@ -36,7 +36,7 @@
 
 <?php
 $config = [
-    'log'            => [ // Record request and response information，Optional parameters 
+    'logs'            => [ // Record request and response information，Optional parameters 
             'driver'      => 'logDriver',//Yii and Phalcon support the injected log component. In other cases, please pass the log component object 
             'file'        => 'app.log',//log name
             'levels'      => ['error'],//log level accept info、error、debug
