@@ -32,6 +32,10 @@ class YiiRequest extends Component
      * @var null
      */
     private $rpc = null;
+    /**
+     * @var array 设置自定义options
+     */
+    private $options = [];
 
     /**
      * @inheritdoc
@@ -58,12 +62,25 @@ class YiiRequest extends Component
         if (!in_array($strategy, ['yar', 'http'])) {
             throw new RpcException('RPC strategy error,only accept yar or http');
         }
-        if (isset($config['log']['driver']) && !empty($config['log']['driver'])) {
-            $config['log']['driver'] = \Yii::$app->get($config['log']['driver']);
+        if ('yar' === $strategy && !extension_loaded('yar')) {
+            throw new RpcException('please install yar extension');
         }
+        if (isset($config['yarPackageType']) && 'msgpack' === $config['yarPackageType'] && !extension_loaded('msgpack')) {
+            throw new RpcException('please install msgpack extension');
+        }
+        $logConfig = [];
         if (isset($config['logs']['driver']) && !empty($config['logs']['driver'])) {
-            $config['logs']['driver'] = \Yii::$app->get($config['logs']['driver']);
+            $logConfig = $config['logs'];
+            unset($config['logs']);
+        } elseif (isset($config['log']['driver']) && !empty($config['log']['driver'])) {
+            $logConfig = $config['log'];
+            unset($config['log']);
         }
+        if (defined('APP_ENVIRONMENT') && extension_loaded('phalcon')) {
+            $logConfig['driver'] = \Yii::$app->get($logConfig['driver']);
+        }
+        $config['logs'] = $logConfig;
+        unset($logConfig);
         $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         $this->rpc = new $class($config);
     }
@@ -92,6 +109,20 @@ class YiiRequest extends Component
         $this->object->setParams($urls);
         $this->object->setToken($token);
         $this->object->setRpc($this->rpc);
+        $this->object->setRequestId();
+        return $this;
+    }
+
+    /**
+     * 向RPC注入自定义options
+     *
+     * @author xyq
+     * @param array $options
+     * @return $this
+     */
+    public function setOptions(array $options)
+    {
+        $this->options = $options;
         return $this;
     }
 
@@ -106,13 +137,17 @@ class YiiRequest extends Component
     {
         $errMsg = $result = null;
         try {
+            !empty($this->options) && $this->object->setOptions($this->options);
             $result = $this->object->get();
-        } catch (\Exception $e) {
-            $errMsg = $e->getMessage();
         } catch (\Throwable $e) {
             $errMsg = $e->getMessage();
         }
         $this->object->saveLog();
+        //清除自定义options
+        if (!empty($this->options)) {
+            $this->setOptions([]);
+            $this->object->setOptions([]);
+        }
         if (!is_null($errMsg)) {
             throw new RpcException($errMsg, 500, $errMsg);
         }
