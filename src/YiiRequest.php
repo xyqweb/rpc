@@ -76,7 +76,7 @@ class YiiRequest extends Component
             $logConfig = $config['log'];
             unset($config['log']);
         }
-        if (defined('APP_ENVIRONMENT') && extension_loaded('phalcon')) {
+        if (isset($logConfig['driver']) && !empty($logConfig['driver'])) {
             $logConfig['driver'] = \Yii::$app->get($logConfig['driver']);
         }
         $config['logs'] = $logConfig;
