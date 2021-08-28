@@ -20,6 +20,7 @@ class SerialRequest extends RequestFactory
      */
     protected function checkParams()
     {
+        $count = count($this->urlArray) - 1;
         foreach ($this->urlArray as $key => $url) {
             if (!isset($url['url']) || empty($url['url'])) {
                 if (!isset($url['outer']) || false == $url['outer']) {
@@ -31,7 +32,7 @@ class SerialRequest extends RequestFactory
             if (!isset($url['method']) || empty($url['method'])) {
                 throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式', 500);
             }
-            if ((isset($url['callback']) || $key > 0) && (empty($url['callback']) || !is_array($url['callback']) || !isset($url['callback'][0]) || !is_object($url['callback'][0]) || !isset($url['callback'][1]) || empty($url['callback'][1]))) {
+            if (($count > 0 && $key < $count) && (!isset($url['callback']) || empty($url['callback']) || !is_array($url['callback']) || !isset($url['callback'][0]) || !is_object($url['callback'][0]) || !isset($url['callback'][1]) || empty($url['callback'][1]))) {
                 throw new RpcException('请正确设置第' . ($key + 1) . '个的回调参数', 500);
             }
         }
