@@ -23,11 +23,10 @@ class SerialRequest extends RequestFactory
         $count = count($this->urlArray) - 1;
         foreach ($this->urlArray as $key => $url) {
             if (!isset($url['url']) || empty($url['url'])) {
-                if (!isset($url['outer']) || false == $url['outer']) {
-                    if (strpos($url['url'], '_') !== 0) {
-                        throw new RpcException('请设置第' . ($key + 1) . '个的URL参数或者参数不正确', 500);
-                    }
-                }
+                throw new RpcException('请设置第' . ($key + 1) . '个的URL参数', 500);
+            }
+            if ((!isset($url['outer']) || !$url['outer']) && strpos($url['url'], '_') !== 0) {
+                throw new RpcException('第' . ($key + 1) . '个的URL参数不正确', 500);
             }
             if (!isset($url['method']) || empty($url['method'])) {
                 throw new RpcException('请设置第' . ($key + 1) . '个的方法名称或者请求方式', 500);
