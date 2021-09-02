@@ -173,7 +173,7 @@ class Yar extends RpcStrategy
         $this->logData[$this->requireKey]['result'] = $result;
         if (!is_array($result)) {
             if ($this->display_error) {
-                throw new RpcException($result, 500);
+                throw new RpcException(empty($result) ? '服务异常：未响应任何结果' : $result, 500);
             } else {
                 $result = [$this->code_key => 0, $this->msg_key => $result];
             }
@@ -263,7 +263,7 @@ class Yar extends RpcStrategy
         if ($this->display_error) {
             foreach ($this->result as $item) {
                 if (!is_array($item)) {
-                    throw new RpcException($item, 500);
+                    throw new RpcException(empty($item) ? '服务异常：未响应任何结果' : $item, 500);
                 }
             }
         }
