@@ -80,7 +80,11 @@ class Http extends RpcStrategy
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->request_time = microtime(true);
-        $this->url = $this->getRealUrl($url, $isIndependent);
+        $urlResult = $this->getRealUrl($url, $isIndependent);
+        $this->url = $urlResult['real_url'];
+        if (!empty($urlResult['real_host'])) {
+            $headers['host'] = $urlResult['real_host'];
+        }
         $this->requireKey = md5($this->url);
         $this->isIndependent = $isIndependent;
         $this->headers = $this->getHeaders($token, $headers);
@@ -118,7 +122,11 @@ class Http extends RpcStrategy
             foreach ($urls as $url) {
                 $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
                 $key = $url['key'];
-                $realUrl = $this->getRealUrl($url['url'], $isIndependent);
+                $urlResult = $this->getRealUrl($url['url'], $isIndependent);
+                $realUrl = $urlResult['real_url'];
+                if (!empty($urlResult['real_host'])) {
+                    $url['headers']['host'] = $urlResult['real_host'];
+                }
                 $method = strtoupper($url['method']);
                 $url['params'] = $url['params'] ?? [];
                 if ('GET' == $method) {

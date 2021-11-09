@@ -315,14 +315,26 @@ abstract class RpcStrategy
      * @author xyq
      * @param string $url 请求地址
      * @param bool $isIndependent 独立站点标识
-     * @return string
+     * @return array
      * @throws \Exception
      */
-    protected function getRealUrl(string $url, $isIndependent = false) : string
+    protected function getRealUrl(string $url, $isIndependent = false) : array
     {
+        $realHost = '';
         //请求的外部站点
         if ($isIndependent) {
-            $realUrl = is_int(strpos($url, 'http://')) || is_int(strpos($url, 'https://')) ? $url : ('http://' . $url);
+            $tempUrl = parse_url($url);
+            if (isset($this->intranetAddress[$tempUrl['host']])) {
+                $port = isset($tempUrl['port']) ? (':' . $tempUrl['port']) : '';
+                $realHost = $tempUrl['host'] . $port;
+                $tempUrl['host'] = $this->intranetAddress[$tempUrl['host']];
+                $realUrl = (isset($tempUrl['scheme']) ? ($tempUrl['scheme'] . '://') : 'http://') . $tempUrl['host'] . $port;
+                $realUrl .= ($tempUrl['path'] ?? '');
+                $realUrl .= (isset($tempUrl['query']) ? ('?' . $tempUrl['query']) : '');
+            } else {
+                $realUrl = is_int(strpos($url, 'http://')) || is_int(strpos($url, 'https://')) ? $url : ('http://' . $url);
+            }
+            unset($tempUrl);
         } else {
             $url = explode('/', $url);
             $first = trim(array_shift($url), '_');
@@ -333,7 +345,29 @@ abstract class RpcStrategy
                     throw new \Exception('模块不存在于配置列表中');
                 }
                 $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
-                $realUrl .= $this->params['rootDomain'] . $first . '/' . implode('/', $url);
+                $domain = $this->params['rootDomain'];
+                if (is_array($domain)) {
+                    $realHost = $domain['host'];
+                    $domain = $domain['ip'];
+                    if (isset($domain['port'])) {
+                        switch ($domain['port']) {
+                            case 80:
+                                $realUrl = 'http://';
+                                break;
+                            case 443:
+                                $realUrl = 'http://';
+                                break;
+                            default:
+                                $domain .= ':' . $domain['port'];
+                                break;
+                        }
+                    }
+                }
+                if (0 === strpos($domain, 'http')) {
+                    $realUrl = rtrim($domain, '/') . '/' . $first . '/' . implode('/', $url);
+                } else {
+                    $realUrl .= trim($domain, '/') . '/' . $first . '/' . implode('/', $url);
+                }
             } else {
                 //独立子服务类型
                 $domain = $this->params['domain'];
@@ -343,18 +377,36 @@ abstract class RpcStrategy
                 }
                 $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
                 if ('local' != $this->params['server']) {
+                    if (is_array($domain[$first])) {
+                        $realHost = $domain[$first]['host'];
+                        $currentDomain = $domain[$first];
+                        $domain[$first] = $domain[$first]['ip'];
+                        if (isset($currentDomain['port'])) {
+                            switch ($currentDomain['port']) {
+                                case 80:
+                                    $realUrl = 'http://';
+                                    break;
+                                case 443:
+                                    $realUrl = 'https://';
+                                    break;
+                                default:
+                                    $domain[$first] .= ':' . $currentDomain['port'];
+                                    break;
+                            }
+                        }
+                    }
                     if (0 === strpos($domain[$first], 'http')) {
-                        $realUrl = $domain[$first] . implode('/', $url);
+                        $realUrl = rtrim($domain[$first], '/') . '/' . implode('/', $url);
                     } else {
-                        $realUrl .= $domain[$first] . implode('/', $url);
+                        $realUrl .= trim($domain[$first], '/') . '/' . implode('/', $url);
                     }
                 } else {
-                    $realUrl .= $first . $this->params['rootDomain'] . implode('/', $url);
+                    $realUrl .= $first . trim($this->params['rootDomain'], '/') . '/' . implode('/', $url);
                 }
             }
         }
         $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query(['wr_id' => $this->request_id]);
-        return $realUrl;
+        return ['real_url' => $realUrl, 'real_host' => $realHost];
     }
 
     /**
@@ -377,13 +429,9 @@ abstract class RpcStrategy
         $convert = ip2long($info['host']);
         $needProxy = true;
         if (!is_int($convert)) {
-            if (!empty($this->intranetAddress)) {
-                foreach ($this->intranetAddress as $intranetAddress) {
-                    if ($info['host'] == $intranetAddress) {
-                        $needProxy = false;
-                        break;
-                    }
-                }
+            if (!empty($this->intranetAddress) && isset($this->intranetAddress[$info['host']])) {
+
+                $needProxy = false;
             }
             return $needProxy;
         }

@@ -66,7 +66,11 @@ class Yar extends RpcStrategy
         $this->request_time = microtime(true);
         $this->isMulti = false;
         //URL最前面加上_是为了兼容线上URL地址，强制执行
-        $realUrl = $this->getRealUrl($url, $isIndependent);
+        $urlResult = $this->getRealUrl($url, $isIndependent);
+        if (!empty($urlResult['real_host'])) {
+            $headers['host'] = $urlResult['real_host'];
+        }
+        $realUrl = $urlResult['real_url'];
         $headers = $this->getHeaders($token, $headers, ':');
         $this->client = new \Yar_Client($realUrl);
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
@@ -114,8 +118,12 @@ class Yar extends RpcStrategy
             $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
             $headers = isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [];
             $url['params'] = $url['params'] ?? null;
+            $urlResult = $this->getRealUrl($url['url'], $isIndependent);
+            $realUrl = $urlResult['real_url'];
+            if (!empty($urlResult['real_host'])) {
+                $headers['host'] = $urlResult['real_host'];
+            }
             $header[YAR_OPT_HEADER] = $this->getHeaders($token, $headers, ':');
-            $realUrl = $this->getRealUrl($url['url'], $isIndependent);
             $needProxy = $this->needProxy($isIndependent, $realUrl);
             if ($needProxy && !empty($this->proxy)) {
                 $header[YAR_OPT_PROXY] = $this->proxy;
@@ -159,10 +167,10 @@ class Yar extends RpcStrategy
             $this->logData[$this->requireKey]['method'] = $method;
             $this->logData[$this->requireKey]['params'] = $data;
             $result = $this->client->{$method}($data);
-            $this->logData[$this->requireKey]['origin_response'] = $result;
             if (!empty($result) && is_string($result)) {
                 $result = $this->formatResponse($result);
             }
+            $this->logData[$this->requireKey]['origin_response'] = is_array($result) ? [] : $result;
         } catch (\Throwable $e) {
             $msg = str_replace('malformed response header ', '', $e->getMessage());
             $result = $this->formatResponse($msg, (int)$e->getCode());
@@ -243,6 +251,7 @@ class Yar extends RpcStrategy
     public function multiGet() : array
     {
         $status = @\Yar_Concurrent_Client::loop();
+        $errorMsg = $error = '';
         if (!$status) {
             $error = error_get_last();
             if (strpos($error['message'], 'select timeout')) {
@@ -250,14 +259,10 @@ class Yar extends RpcStrategy
             } else {
                 $errorMsg = $error['message'];
             }
-            foreach ($this->urls as $url) {
-                if (!isset($this->result[$url['key']])) {
-                    $logKey = md5('key' . $url['key']);
-                    $this->result[$url['key']] = $this->display_error ? $errorMsg : [$this->code_key => 0, $this->msg_key => $errorMsg];
-                    $this->logData[$logKey]['use_time'] = microtime(true) - $this->request_time;
-                    $this->logData[$logKey]['origin_response'] = $error['message'];
-                    $this->logData[$logKey]['result'] = $errorMsg;
-                }
+        }
+        foreach ($this->urls as $url) {
+            if (!isset($this->result[$url['key']])) {
+                $this->result[$url['key']] = $this->display_error ? $errorMsg : [$this->code_key => 0, $this->msg_key => $errorMsg];
             }
         }
         if ($this->display_error) {
