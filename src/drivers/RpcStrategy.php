@@ -355,7 +355,7 @@ abstract class RpcStrategy
                                 $realUrl = 'http://';
                                 break;
                             case 443:
-                                $realUrl = 'http://';
+                                $realUrl = 'https://';
                                 break;
                             default:
                                 $domain .= ':' . $domain['port'];
