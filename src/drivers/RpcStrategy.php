@@ -352,6 +352,7 @@ abstract class RpcStrategy
                 }
 
                 $domain = $this->params['rootDomain'];
+                array_unshift($url, $first);
             } else {
                 //独立子服务类型
                 $domain = $this->params['domain'];
