@@ -321,16 +321,20 @@ abstract class RpcStrategy
     protected function getRealUrl(string $url, $isIndependent = false) : array
     {
         $realHost = '';
+        $url = trim($url);
         //请求的外部站点
         if ($isIndependent) {
             $tempUrl = parse_url($url);
             if (isset($this->intranetAddress[$tempUrl['host']])) {
-                $port = isset($tempUrl['port']) ? (':' . $tempUrl['port']) : '';
-                $realHost = $tempUrl['host'] . $port;
-                $tempUrl['host'] = $this->intranetAddress[$tempUrl['host']];
-                $realUrl = (isset($tempUrl['scheme']) ? ($tempUrl['scheme'] . '://') : 'http://') . $tempUrl['host'] . $port;
-                $realUrl .= ($tempUrl['path'] ?? '');
-                $realUrl .= (isset($tempUrl['query']) ? ('?' . $tempUrl['query']) : '');
+                $port = isset($tempUrl['port']) && !empty($tempUrl['port']) ? intval($tempUrl['port']) : 0;
+                $domain = $this->intranetAddress[$tempUrl['host']];
+                $scheme = isset($tempUrl['scheme']) && !empty($tempUrl['scheme']) ? ($tempUrl['scheme'] . '://') : 'http://';
+                $realHost = $tempUrl['host'] . ($port > 0 && !in_array($port, [80, 443]) ? (':' . $port) : '');
+                $path = $tempUrl['path'] ?? '';
+                $realUrl = $this->assembleUrl($scheme, $domain, $port, explode('/', $path));
+                if (isset($tempUrl['query']) && !empty($tempUrl['query'])) {
+                    $realUrl .= $tempUrl['query'];
+                }
             } else {
                 $realUrl = is_int(strpos($url, 'http://')) || is_int(strpos($url, 'https://')) ? $url : ('http://' . $url);
             }
@@ -338,36 +342,16 @@ abstract class RpcStrategy
         } else {
             $url = explode('/', $url);
             $first = trim(array_shift($url), '_');
+            $port = 0;
+            $scheme = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
             //服务类型为模块
             if (isset($this->params['serverType']) && 'module' == $this->params['serverType']) {
                 $module = $this->params['module'];
                 if (!in_array($first, $module)) {
                     throw new \Exception('模块不存在于配置列表中');
                 }
-                $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
+
                 $domain = $this->params['rootDomain'];
-                if (is_array($domain)) {
-                    $realHost = $domain['host'];
-                    $domain = $domain['ip'];
-                    if (isset($domain['port'])) {
-                        switch ($domain['port']) {
-                            case 80:
-                                $realUrl = 'http://';
-                                break;
-                            case 443:
-                                $realUrl = 'https://';
-                                break;
-                            default:
-                                $domain .= ':' . $domain['port'];
-                                break;
-                        }
-                    }
-                }
-                if (0 === strpos($domain, 'http')) {
-                    $realUrl = rtrim($domain, '/') . '/' . $first . '/' . implode('/', $url);
-                } else {
-                    $realUrl .= trim($domain, '/') . '/' . $first . '/' . implode('/', $url);
-                }
             } else {
                 //独立子服务类型
                 $domain = $this->params['domain'];
@@ -375,38 +359,45 @@ abstract class RpcStrategy
                 if (!in_array($first, $domainName)) {
                     throw new \Exception('域名不存在于配置列表中');
                 }
-                $realUrl = $this->params['serverPort'] == 443 ? 'https://' : 'http://';
-                if ('local' != $this->params['server']) {
-                    if (is_array($domain[$first])) {
-                        $realHost = $domain[$first]['host'];
-                        $currentDomain = $domain[$first];
-                        $domain[$first] = $domain[$first]['ip'];
-                        if (isset($currentDomain['port'])) {
-                            switch ($currentDomain['port']) {
-                                case 80:
-                                    $realUrl = 'http://';
-                                    break;
-                                case 443:
-                                    $realUrl = 'https://';
-                                    break;
-                                default:
-                                    $domain[$first] .= ':' . $currentDomain['port'];
-                                    break;
-                            }
-                        }
-                    }
-                    if (0 === strpos($domain[$first], 'http')) {
-                        $realUrl = rtrim($domain[$first], '/') . '/' . implode('/', $url);
-                    } else {
-                        $realUrl .= trim($domain[$first], '/') . '/' . implode('/', $url);
-                    }
-                } else {
-                    $realUrl .= $first . trim($this->params['rootDomain'], '/') . '/' . implode('/', $url);
-                }
+                $domain = 'local' != $this->params['server'] ? $domain[$first] : ($first . trim($this->params['rootDomain'], '/'));
             }
+            if (is_array($domain)) {
+                $port = isset($domain['port']) && $domain['port'] > 0 ? $domain['port'] : 0;
+                $realHost = $domain['host'];
+                $domain = $domain['ip'];
+                $realHost .= ($port > 0 && !in_array($port, [80, 443]) ? (':' . $port) : '');
+            }
+            $realUrl = $this->assembleUrl($scheme, $domain, $port, $url);
+
+
         }
         $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query(['wr_id' => $this->request_id]);
         return ['real_url' => $realUrl, 'real_host' => $realHost];
+    }
+
+    /**
+     * 组装url
+     *
+     * @author xyq
+     * @param string $scheme
+     * @param string $domain
+     * @param int $port
+     * @param array $path
+     * @return string
+     */
+    private function assembleUrl(string $scheme, string $domain, int $port, array $path)
+    {
+        $path = array_filter($path);
+        //端口为80和443的强制变更
+        if (80 == $port) {
+            $scheme = 'http://';
+        } elseif (443 == $port) {
+            $scheme = 'https://';
+        }
+        $realUrl = (0 === strpos($domain, 'http') ? '' : $scheme) . trim($domain, '/');
+        $realUrl .= ($port > 0 && !in_array($port, [80, 443]) ? (':' . $port) : '');
+        $realUrl .= '/' . implode('/', $path);
+        return $realUrl;
     }
 
     /**
@@ -430,7 +421,6 @@ abstract class RpcStrategy
         $needProxy = true;
         if (!is_int($convert)) {
             if (!empty($this->intranetAddress) && isset($this->intranetAddress[$info['host']])) {
-
                 $needProxy = false;
             }
             return $needProxy;
@@ -473,6 +463,7 @@ abstract class RpcStrategy
         if (!empty($this->logData) && is_object($this->logDriver)) {
             $finalLog = [];
             if (empty($this->logLevel)) {
+                $this->logData = [];
                 return null;
             }
             foreach ($this->logData as $key => $item) {
@@ -488,11 +479,7 @@ abstract class RpcStrategy
                     $level = 'error';
                 }
                 //不记录info级别
-                if (!in_array('info', $this->logLevel) && 'info' === $level) {
-                    continue;
-                } elseif (!in_array('error', $this->logLevel) && 'error' === $level) {//不记录error级别
-                    continue;
-                } elseif (!in_array('debug', $this->logLevel) && 'debug' === $level) {
+                if ((!in_array('info', $this->logLevel) && 'info' === $level) || (!in_array('error', $this->logLevel) && 'error' === $level) || (!in_array('debug', $this->logLevel) && 'debug' === $level)) {
                     continue;
                 }
                 //当成功时且使用时间小于规定值
@@ -501,6 +488,7 @@ abstract class RpcStrategy
                 }
                 $finalLog[] = $item;
             }
+            $this->logData = [];
             if (!empty($finalLog)) {
                 $result = $this->logDriver->write($this->logName, $finalLog);
             } else {
@@ -508,9 +496,9 @@ abstract class RpcStrategy
             }
             unset($finalLog);
         } else {
+            $this->logData = [];
             $result = null;
         }
-        $this->logData = [];
         return $result;
     }
 

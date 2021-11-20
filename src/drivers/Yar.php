@@ -172,8 +172,7 @@ class Yar extends RpcStrategy
             }
             $this->logData[$this->requireKey]['origin_response'] = is_array($result) ? [] : $result;
         } catch (\Throwable $e) {
-            $msg = str_replace('malformed response header ', '', $e->getMessage());
-            $result = $this->formatResponse($msg, (int)$e->getCode());
+            $result = $this->formatResponse($e->getMessage(), (int)$e->getCode());
             $this->logData[$this->requireKey]['origin_response'] = $e->getMessage() . ':' . $e->getFile() . ':' . $e->getLine();
             unset($e);
         }
@@ -201,6 +200,9 @@ class Yar extends RpcStrategy
     protected function formatResponse(string $msg, int $code = 2, $key = '')
     {
         if (2 == $code) {
+            if (0 === strpos($msg, 'malformed')) {
+                $msg = str_replace('malformed response header ', '', $msg);
+            }
             $result = json_decode(trim($msg, "'"), true);
             if (!is_array($result)) {
                 $exceptionMsg = empty($key) ? '' : "键值{$key}：";
