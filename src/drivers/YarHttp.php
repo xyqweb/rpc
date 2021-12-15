@@ -3,8 +3,8 @@ declare(strict_types = 1);
 /**
  * Created by PhpStorm.
  * User: XYQ
- * Date: 2020-03-27
- * Time: 14:31
+ * Date: 2021-12-15
+ * Time: 14:02
  */
 
 namespace xyqWeb\rpc\drivers;
@@ -14,7 +14,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\TransferStats;
 use xyqWeb\rpc\strategy\RpcException;
 
-class Http extends RpcStrategy
+class YarHttp extends RpcStrategy
 {
     /**
      * @var string 串行请求URL地址
@@ -80,7 +80,7 @@ class Http extends RpcStrategy
         //URL最前面加上_是为了兼容线上URL地址，强制执行
         $this->getClient();
         $this->request_time = microtime(true);
-        $urlResult = $this->getRealUrl($url, $isIndependent, 'http');
+        $urlResult = $this->getRealUrl($url, $isIndependent, 'yarHttp');
         $this->url = $urlResult['real_url'];
         if (!empty($urlResult['real_host'])) {
             $headers['host'] = $urlResult['real_host'];
@@ -122,21 +122,14 @@ class Http extends RpcStrategy
             foreach ($urls as $url) {
                 $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
                 $key = $url['key'];
-                $urlResult = $this->getRealUrl($url['url'], $isIndependent, 'http');
+                $urlResult = $this->getRealUrl($url['url'], $isIndependent, 'yarHttp');
                 $realUrl = $urlResult['real_url'];
                 if (!empty($urlResult['real_host'])) {
                     $url['headers']['host'] = $urlResult['real_host'];
                 }
-                $method = strtoupper($url['method']);
                 $url['params'] = $url['params'] ?? [];
-                if ('GET' == $method) {
-                    $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query($url['params']);
-                    if (isset($options['json'])) {
-                        unset($options['json']);
-                    }
-                } else {
-                    $options['json'] = $url['params'];
-                }
+                $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query(['method' => $url['method']]);
+                $options['json'] = $url['params'];
                 $needProxy = $this->needProxy($isIndependent, $realUrl);
                 if ($needProxy && !empty($this->proxy)) {
                     $options['proxy'] = $this->proxy;
@@ -147,7 +140,7 @@ class Http extends RpcStrategy
                 }
                 $this->logData[$key] = [
                     'url'          => $realUrl,
-                    'method'       => $method,
+                    'method'       => $url['method'],
                     'proxy'        => $options['proxy'] ?? [],
                     'headers'      => $options['headers'],
                     'params'       => $url['params'],
@@ -157,7 +150,7 @@ class Http extends RpcStrategy
                 $options['on_stats'] = function (TransferStats $stats) use ($key) {
                     $this->logData[$key]['use_time'] = $stats->getTransferTime();
                 };
-                $promises[$key] = $this->client->requestAsync($method, $realUrl, $options);
+                $promises[$key] = $this->client->requestAsync('POST', $realUrl, $options);
             }
             $this->result = $promises;
         } catch (\Exception $e) {
@@ -182,7 +175,6 @@ class Http extends RpcStrategy
             if (!$this->client instanceof Client) {
                 throw new RpcException('必须先设置URI！', 500);
             }
-            $method = strtoupper($method);
             $options = [
                 'headers'     => $this->headers,
                 'http_errors' => false,
@@ -196,15 +188,13 @@ class Http extends RpcStrategy
                 $options['proxy'] = $this->proxy;
             }
             $realUrl = $this->url;
-            if ('GET' == $method) {
-                $realUrl .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query($data);
-            } else {
-                $options['json'] = $data;
-            }
+            $realUrl .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query(['method' => $method]);
+            $options['json'] = $data;
+            $this->logData[$this->requireKey]['url'] = $realUrl;
             $this->logData[$this->requireKey]['method'] = $method;
             $this->logData[$this->requireKey]['proxy'] = $options['proxy'] ?? [];
             $this->logData[$this->requireKey]['params'] = $data;
-            $result = $this->client->request($method, $realUrl, $options);
+            $result = $this->client->request('POST', $realUrl, $options);
             $responseCode = $result->getStatusCode();
             $responseContent = $result->getBody()->getContents();
             $result = $this->formatResponse($responseContent, (int)$responseCode);

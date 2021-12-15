@@ -59,7 +59,7 @@ class YiiRequest extends Component
      */
     public function initRpc(string $strategy, array $config = [])
     {
-        if (!in_array($strategy, ['yar', 'http'])) {
+        if (!in_array($strategy, ['yar', 'http', 'yarHttp'])) {
             throw new RpcException('RPC strategy error,only accept yar or http');
         }
         if ('yar' === $strategy && !extension_loaded('yar')) {

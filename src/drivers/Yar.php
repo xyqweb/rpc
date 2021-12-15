@@ -66,7 +66,7 @@ class Yar extends RpcStrategy
         $this->request_time = microtime(true);
         $this->isMulti = false;
         //URL最前面加上_是为了兼容线上URL地址，强制执行
-        $urlResult = $this->getRealUrl($url, $isIndependent);
+        $urlResult = $this->getRealUrl($url, $isIndependent, 'yar');
         if (!empty($urlResult['real_host'])) {
             $headers['host'] = $urlResult['real_host'];
         }
@@ -118,7 +118,7 @@ class Yar extends RpcStrategy
             $isIndependent = isset($url['outer']) && $url['outer'] ? true : false;
             $headers = isset($url['headers']) && is_array($url['headers']) ? $url['headers'] : [];
             $url['params'] = $url['params'] ?? null;
-            $urlResult = $this->getRealUrl($url['url'], $isIndependent);
+            $urlResult = $this->getRealUrl($url['url'], $isIndependent, 'yar');
             $realUrl = $urlResult['real_url'];
             if (!empty($urlResult['real_host'])) {
                 $headers['host'] = $urlResult['real_host'];
