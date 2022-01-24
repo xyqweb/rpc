@@ -677,4 +677,40 @@ abstract class RpcStrategy
             return '';
         }
     }
+
+    /**
+     * 获取签名
+     *
+     * @author xyq
+     * @param string $url
+     * @return string
+     */
+    protected function getSign(string $url)
+    {
+        if (isset($this->params['sign']) && !empty($this->params['sign']) && $this->params['sign']['enable'] && true == $this->params['sign']['enable']) {
+            $secret = $this->params['sign']['secret'];
+            $tempUrl = parse_url($url);
+            $query = $tempUrl['query'] ?? '';
+            $query = explode('&', $query);
+            $args = [];
+            foreach ($query as $arg) {
+                $arg = explode('=', $arg);
+                if (!empty($arg) && is_array($arg)) {
+                    if ($arg[0] == 'sign') {
+                        continue;
+                    }
+                    $args[$arg[0]] = $arg[1];
+                }
+            }
+            ksort($args);
+            $signString = 'path=' . $tempUrl['path'];
+            foreach ($args as $key => $val) {
+                $signString .= '&' . $key . '=' . urldecode($val);
+            }
+            $signString .= $secret;
+            return '&sign=' . md5($signString);
+        } else {
+            return '';
+        }
+    }
 }

@@ -71,6 +71,7 @@ class Yar extends RpcStrategy
             $headers['host'] = $urlResult['real_host'];
         }
         $realUrl = $urlResult['real_url'];
+        $realUrl .= $this->getSign($realUrl);
         $headers = $this->getHeaders($token, $headers, ':');
         $this->client = new \Yar_Client($realUrl);
         $this->client->SetOpt(YAR_OPT_PERSISTENT, true);
@@ -123,6 +124,7 @@ class Yar extends RpcStrategy
             if (!empty($urlResult['real_host'])) {
                 $headers['host'] = $urlResult['real_host'];
             }
+            $realUrl .= $this->getSign($realUrl);
             $header[YAR_OPT_HEADER] = $this->getHeaders($token, $headers, ':');
             $needProxy = $this->needProxy($isIndependent, $realUrl);
             if ($needProxy && !empty($this->proxy)) {

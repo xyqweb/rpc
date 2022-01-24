@@ -129,6 +129,7 @@ class YarHttp extends RpcStrategy
                 }
                 $url['params'] = $url['params'] ?? [];
                 $realUrl .= (is_int(strpos($realUrl, '?')) ? '&' : '?') . http_build_query(['method' => $url['method']]);
+                $realUrl .= $this->getSign($realUrl);
                 $options['json'] = $url['params'];
                 $needProxy = $this->needProxy($isIndependent, $realUrl);
                 if ($needProxy && !empty($this->proxy)) {
@@ -189,6 +190,7 @@ class YarHttp extends RpcStrategy
             }
             $realUrl = $this->url;
             $realUrl .= (is_int(strpos($this->url, '?')) ? '&' : '?') . http_build_query(['method' => $method]);
+            $realUrl .= $this->getSign($realUrl);
             $options['json'] = $data;
             $this->logData[$this->requireKey]['url'] = $realUrl;
             $this->logData[$this->requireKey]['method'] = $method;

@@ -91,7 +91,6 @@ class Http extends RpcStrategy
         $this->isMulti = false;
         $this->single_options = $options;
         $this->logData[$this->requireKey] = [
-            'url'          => $this->url,
             'headers'      => $this->headers,
             'request_time' => $this->request_time,
             'request_uri'  => $this->getRequestUri(),
@@ -137,6 +136,7 @@ class Http extends RpcStrategy
                 } else {
                     $options['json'] = $url['params'];
                 }
+                $realUrl .= $this->getSign($realUrl);
                 $needProxy = $this->needProxy($isIndependent, $realUrl);
                 if ($needProxy && !empty($this->proxy)) {
                     $options['proxy'] = $this->proxy;
@@ -201,6 +201,8 @@ class Http extends RpcStrategy
             } else {
                 $options['json'] = $data;
             }
+            $realUrl .= $this->getSign($realUrl);
+            $this->logData[$this->requireKey]['url'] = $realUrl;
             $this->logData[$this->requireKey]['method'] = $method;
             $this->logData[$this->requireKey]['proxy'] = $options['proxy'] ?? [];
             $this->logData[$this->requireKey]['params'] = $data;
