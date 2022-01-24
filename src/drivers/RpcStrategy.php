@@ -692,20 +692,20 @@ abstract class RpcStrategy
             $tempUrl = parse_url($url);
             $query = $tempUrl['query'] ?? '';
             $query = explode('&', $query);
-            $args = [];
+            $args = ['timestamp' => time()];
             foreach ($query as $arg) {
                 $arg = explode('=', $arg);
                 if (!empty($arg) && is_array($arg)) {
-                    if ($arg[0] == 'sign') {
+                    if (!isset($arg[1]) || empty($arg[0]) || empty($arg[1]) || $arg[0] == 'sign') {
                         continue;
                     }
                     $args[$arg[0]] = $arg[1];
                 }
             }
             ksort($args);
-            $signString = $tempUrl['path'];
+            $signString = '';
             foreach ($args as $key => $val) {
-                $signString .= '&' . $key . '=' . urldecode($val);
+                $signString .= '&' . $key . '=' . urldecode((string)$val);
             }
             $signString .= $secret;
             return '&sign=' . md5($signString);
