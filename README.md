@@ -62,9 +62,9 @@ $config = [
             'success_code' => [1],//response data success status value
             'fail_code'    => [0]//response data fail status value
         ],
-        'sign' => [
-            'enable' => true,
-            'secret' => 'xxxxxxxxxxxxxxxxxx'   
+        'sign' => [ //use sign request params
+            'enable' => true, //enable sign
+            'secret' => 'xxxxxxxxxxxxxxxxxx' //sign secret    
          ],
     //    'proxy'          => [ //only work in http request and outer params is true
     //        'host' => 'proxy server ip',
