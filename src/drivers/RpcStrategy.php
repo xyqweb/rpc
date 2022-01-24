@@ -703,7 +703,7 @@ abstract class RpcStrategy
                 }
             }
             ksort($args);
-            $signString = 'path=' . $tempUrl['path'];
+            $signString = $tempUrl['path'];
             foreach ($args as $key => $val) {
                 $signString .= '&' . $key . '=' . urldecode($val);
             }
