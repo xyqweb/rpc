@@ -687,7 +687,7 @@ abstract class RpcStrategy
      */
     protected function getSign(string $url)
     {
-        if (isset($this->params['sign']) && !empty($this->params['sign']) && $this->params['sign']['enable'] && true == $this->params['sign']['enable']) {
+        if (isset($this->params['sign']) && !empty($this->params['sign']) && isset($this->params['sign']['enable']) && true === $this->params['sign']['enable']) {
             $secret = $this->params['sign']['secret'];
             $tempUrl = parse_url($url);
             $query = $tempUrl['query'] ?? '';
@@ -703,12 +703,11 @@ abstract class RpcStrategy
                 }
             }
             ksort($args);
-            $signString = '';
+            $signString = $secret;
             foreach ($args as $key => $val) {
                 $signString .= '&' . $key . '=' . urldecode((string)$val);
             }
-            $signString .= $secret;
-            return '&sign=' . md5($signString);
+            return '&sign=' . md5($signString) . '&timestamp=' . $args['timestamp'];
         } else {
             return '';
         }
