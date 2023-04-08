@@ -23,7 +23,7 @@ class Request
      */
     private $object = null;
     /**
-     * @var null
+     * @var null|\xyqWeb\rpc\drivers\RpcStrategy
      */
     private static $rpc = null;
     /**
@@ -65,6 +65,9 @@ class Request
         unset($logConfig);
         $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         self::$rpc = new $class($config);
+        if (isset($config['authHeaders']) && is_array($config['authHeaders']) && !empty($config['authHeaders'])) {
+            self::$rpc->setAuthHeader($config['authHeaders']);
+        }
     }
 
     /**

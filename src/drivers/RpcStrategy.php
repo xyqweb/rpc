@@ -107,6 +107,11 @@ abstract class RpcStrategy
     protected $request_id = '';
 
     /**
+     * @var array 认证header
+     */
+    protected $authHeaders = [];
+
+    /**
      * RpcStrategy constructor.
      * @param array $params
      */
@@ -278,6 +283,9 @@ abstract class RpcStrategy
             $header['env'] = 'browser';
         }
         $header["x-real-ip"] = $this->getUserIp();
+        if (!empty($this->authHeaders)) {
+            $header = array_merge($header, $this->authHeaders);
+        }
         if (!empty($glue)) {
             $finalHeader = [];
             foreach ($header as $key => $value) {
@@ -332,7 +340,7 @@ abstract class RpcStrategy
                 $scheme = isset($tempUrl['scheme']) && !empty($tempUrl['scheme']) ? ($tempUrl['scheme'] . '://') : 'http://';
                 $realHost = $tempUrl['host'] . ($port > 0 && !in_array($port, [80, 443]) ? (':' . $port) : '');
                 $path = $tempUrl['path'] ?? '';
-                $realUrl = $this->assembleUrl($scheme, $domain, $port, explode('/', $path));
+                $realUrl = $this->assembleUrl($scheme, $domain, (int)$port, explode('/', $path));
                 if (isset($tempUrl['query']) && !empty($tempUrl['query'])) {
                     $realUrl .= $tempUrl['query'];
                 }
@@ -369,7 +377,7 @@ abstract class RpcStrategy
                 $domain = $domain['ip'];
                 $realHost .= ($port > 0 && !in_array($port, [80, 443]) ? (':' . $port) : '');
             }
-            $realUrl = $this->assembleUrl($scheme, $domain, $port, $url);
+            $realUrl = $this->assembleUrl($scheme, $domain, (int)$port, $url);
 
 
         }
@@ -527,6 +535,17 @@ abstract class RpcStrategy
     public function setRequestId(string $request_id)
     {
         $this->request_id = $request_id;
+    }
+
+    /**
+     * 设置请求ID
+     *
+     * @author xyq
+     * @param array $headers
+     */
+    public function setAuthHeader(array $headers)
+    {
+        $this->authHeaders = $headers;
     }
 
     /**

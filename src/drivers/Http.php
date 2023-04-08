@@ -174,6 +174,7 @@ class Http extends RpcStrategy
      * @param null $data 传输的参数
      * @return array
      * @throws RpcException
+     * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function get(string $method, $data = null) : array
     {

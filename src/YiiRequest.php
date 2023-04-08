@@ -29,7 +29,7 @@ class YiiRequest extends Component
      */
     private $object = null;
     /**
-     * @var null
+     * @var null|\xyqWeb\rpc\drivers\RpcStrategy
      */
     private $rpc = null;
     /**
@@ -83,6 +83,9 @@ class YiiRequest extends Component
         unset($logConfig);
         $class = '\xyqWeb\rpc\drivers\\' . ucfirst($strategy);
         $this->rpc = new $class($config);
+        if (isset($config['authHeaders']) && is_array($config['authHeaders']) && !empty($config['authHeaders'])) {
+            $this->rpc->setAuthHeader($config['authHeaders']);
+        }
     }
 
 
